@@ -1,0 +1,10 @@
+# Render blueprint: free web service running the single-process demo.
+services:
+  - type: web
+    name: ticket-triage
+    runtime: docker
+    plan: free
+    dockerfilePath: ./demo/Dockerfile
+    dockerContext: .
+    healthCheckPath: /_stcore/health
+    autoDeploy: true
