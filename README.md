@@ -191,25 +191,27 @@ Required fields: `subject`, `description`, `channel` (email/web/chat/phone), `pr
 `customer_tier` (free/pro/enterprise). Optional: `category`, `created_at` (defaults to now),
 `prior_tickets_30d`, `attachments`, `ticket_id`. Invalid input returns `400` with per-field messages.
 
-## Free public demo (Hugging Face Spaces)
+## Free public demo (Streamlit Community Cloud)
 
-The `space` target in the Dockerfile runs the API and UI together in one container, which suits free
-Docker hosting. To try it locally:
-
-```bash
-make space            # http://localhost:7860
-```
-
-To publish it to a free Hugging Face Space:
+[`demo/streamlit_app.py`](demo/streamlit_app.py) runs the Streamlit UI with the Flask app loaded
+in-process (through its test client), so validation and responses match the HTTP API exactly and no
+separate server is needed. To try it locally:
 
 ```bash
-.venv/bin/hf auth login                          # paste a token with "write" access
-make publish SPACE=<hf-username>/ticket-triage
+make demo             # http://localhost:8501
 ```
 
-[`publish.py`](deploy/huggingface/publish.py) uploads only the code, Dockerfile and trained model.
-Hugging Face builds the image and serves it at `https://<hf-username>-ticket-triage.hf.space`.
-Free Spaces sleep after a period of inactivity and wake on the next visit.
+To host it free:
+
+1. Push this repo to GitHub (public).
+2. Sign in at https://share.streamlit.io with GitHub and choose **Create app**.
+3. Repository `<user>/ticket-triage`, branch `main`, main file `demo/streamlit_app.py`.
+   Under **Advanced settings**, choose Python 3.11.
+
+Dependencies come from [`demo/requirements.txt`](demo/requirements.txt). Free apps sleep after a
+period of inactivity and wake on the next visit.
+
+For hosts that run a single Docker service, `make space` builds an image with the API and UI together.
 
 ## Deploying to AWS
 
@@ -261,7 +263,7 @@ api/                  Flask app + gunicorn entry point
 ui/                   Streamlit app
 tests/                pytest suite
 deploy/aws/           CloudFormation template, deploy + teardown scripts
-deploy/huggingface/   free demo hosting (Hugging Face Spaces)
+demo/                 single-process entry point for free Streamlit Community Cloud hosting
 Dockerfile            API, UI and single-container demo images (multi-target)
 Dockerfile.spark      Spark job image (Java 17)
 ```
