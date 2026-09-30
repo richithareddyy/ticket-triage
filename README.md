@@ -7,10 +7,10 @@ An end-to-end ML system that reads an incoming support ticket (free text + metad
 3. **Why**: per-ticket SHAP explanations an agent can act on, plus an SLA-breach flag
 
 It covers NLP and structured feature engineering (NLTK, PySpark), model comparison (Logistic Regression,
-Random Forest, XGBoost), explainability (SHAP), a Flask REST API, a Streamlit UI, Docker, and an
-AWS ECS Fargate deployment.
+Random Forest, XGBoost), explainability (SHAP), a Flask REST API, a Streamlit UI, Docker, and
+infrastructure-as-code for deploying to AWS ECS Fargate.
 
-**Stack:** Python · scikit-learn · XGBoost · SHAP · NLTK · PySpark · Flask · Streamlit · Docker · AWS (ECR, ECS Fargate, ALB, CloudFormation)
+**Stack:** Python · scikit-learn · XGBoost · SHAP · NLTK · PySpark · Flask · Streamlit · Docker · AWS CloudFormation (ECR, ECS Fargate, ALB)
 
 ---
 
@@ -62,7 +62,7 @@ Model comparison (test set, each trained on the same split):
  Streamlit UI ──HTTP──► Flask API (gunicorn) ──► pandas features ──► model + SHAP
    :8501                   :5000                 (same logic as Spark,
                                                   verified by a parity test)
-                         └─────────── Docker / ECS Fargate ──────────┘
+                         └───── Docker (ECS Fargate templates) ──────┘
 ```
 
 ### Features
