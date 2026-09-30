@@ -5,3 +5,4 @@ nltk_data/
 
 # Regenerate with `make data` / `make spark`
 data/
+.DS_Store
