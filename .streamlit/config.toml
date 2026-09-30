@@ -3,3 +3,30 @@ toolbarMode = "viewer"
 
 [browser]
 gatherUsageStats = false
+
+# Design tokens. ui/theme.py reads these so charts and custom components
+# stay in sync with Streamlit's own widgets.
+[theme]
+base = "light"
+primaryColor = "#3B5BDB"
+backgroundColor = "#F6F7FB"
+secondaryBackgroundColor = "#EEF1F7"
+textColor = "#1B2333"
+linkColor = "#3B5BDB"
+borderColor = "#DCE1EA"
+showWidgetBorder = true
+baseRadius = "0.5rem"
+buttonRadius = "0.5rem"
+codeBackgroundColor = "#EEF1F7"
+dataframeHeaderBackgroundColor = "#F1F3F8"
+redColor = "#C2413B"
+orangeColor = "#C8691C"
+yellowColor = "#A07F0A"
+greenColor = "#2E8B57"
+blueColor = "#3B5BDB"
+grayColor = "#687287"
+chartCategoricalColors = ["#3B5BDB", "#D9653B", "#2E8B57", "#8A63D2", "#C49A1A", "#5B6B84"]
+
+[theme.sidebar]
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F1F3F8"
