@@ -1,0 +1,8 @@
+.venv
+.git
+**/__pycache__
+.pytest_cache
+nltk_data
+data
+deploy/aws
+*.md

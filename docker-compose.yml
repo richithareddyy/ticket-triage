@@ -1,0 +1,23 @@
+services:
+  api:
+    build: { context: ., target: api }
+    image: ticket-triage-api
+    ports: ["${API_PORT:-5050}:5000"]
+    restart: unless-stopped
+
+  ui:
+    build: { context: ., target: ui }
+    image: ticket-triage-ui
+    ports: ["8501:8501"]
+    environment:
+      API_URL: http://api:5000
+    depends_on:
+      api: { condition: service_healthy }
+    restart: unless-stopped
+
+  # Batch feature engineering: `docker compose --profile batch run --rm spark`
+  spark:
+    build: { context: ., dockerfile: Dockerfile.spark }
+    image: ticket-triage-spark
+    volumes: ["./data:/app/data"]
+    profiles: ["batch"]

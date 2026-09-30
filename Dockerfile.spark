@@ -1,0 +1,15 @@
+# PySpark batch feature job (bundles the Java 17 runtime Spark needs).
+#   docker build -f Dockerfile.spark -t ticket-triage-spark .
+#   docker run --rm -v "$PWD/data:/app/data" ticket-triage-spark
+FROM python:3.11-slim-bookworm
+ENV PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1 NLTK_DATA=/app/nltk_data
+WORKDIR /app
+RUN apt-get update && apt-get install -y --no-install-recommends openjdk-17-jre-headless procps \
+    && rm -rf /var/lib/apt/lists/*
+COPY requirements.txt .
+RUN pip install -r requirements.txt pyspark==3.5.3 pyarrow==21.0.0 pytest==8.4.2
+COPY triage/ triage/
+COPY tests/ tests/
+RUN python -c "from triage.text import ensure_nltk; ensure_nltk()"
+ENTRYPOINT ["python", "-m", "triage.spark_features"]
+CMD ["--input", "data/tickets.csv", "--output", "data/features.parquet"]
