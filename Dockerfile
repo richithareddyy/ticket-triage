@@ -32,6 +32,7 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
 COPY requirements-ui.txt .
 RUN pip install -r requirements-ui.txt
+COPY .streamlit/ .streamlit/
 COPY ui/ ui/
 RUN useradd --create-home appuser
 USER appuser
@@ -46,6 +47,7 @@ FROM api AS space
 USER root
 COPY requirements-ui.txt .
 RUN pip install -r requirements-ui.txt
+COPY .streamlit/ .streamlit/
 COPY ui/ ui/
 COPY deploy/start-space.sh /app/start-space.sh
 RUN chmod +x /app/start-space.sh && chown -R appuser /app
