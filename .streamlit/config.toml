@@ -5,24 +5,25 @@ toolbarMode = "viewer"
 gatherUsageStats = false
 
 # Design tokens. ui/theme.py reads these so charts and custom elements stay in
-# sync with Streamlit's own widgets.
+# sync with Streamlit's own widgets. Inputs are white on a paper page so that
+# editable fields read differently from the tinted prediction panel.
 [theme]
 base = "light"
 primaryColor = "#0E6B6B"
 backgroundColor = "#FAFAF7"
-secondaryBackgroundColor = "#F1F0EA"
+secondaryBackgroundColor = "#FFFFFF"
 textColor = "#1D2126"
 linkColor = "#0E6B6B"
-borderColor = "#DDDBD3"
+borderColor = "#D9D7CF"
 showWidgetBorder = true
-baseRadius = "0.25rem"
-buttonRadius = "0.25rem"
+baseRadius = "4px"
+buttonRadius = "4px"
 codeBackgroundColor = "#F1F0EA"
-dataframeHeaderBackgroundColor = "#F1F0EA"
+dataframeHeaderBackgroundColor = "#F3F2EC"
 redColor = "#B3261E"
-orangeColor = "#C0602A"
-yellowColor = "#9A7A14"
+orangeColor = "#B4561F"
+yellowColor = "#8A6D10"
 greenColor = "#3F7D58"
 blueColor = "#0E6B6B"
-grayColor = "#6A6E75"
-chartCategoricalColors = ["#0E6B6B", "#C0602A", "#3F7D58", "#9A7A14", "#6A6E75"]
+grayColor = "#62666D"
+chartCategoricalColors = ["#0E6B6B", "#B4561F", "#3F7D58", "#8A6D10", "#62666D"]
