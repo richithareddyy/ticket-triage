@@ -1,25 +1,24 @@
-# Support Ticket Triage & Resolution-Time Predictor
+# Support Ticket Triage
 
-**Live demo:** [richithareddyy-ticket-triage-demostreamlit-app-3uubea.streamlit.app](https://richithareddyy-ticket-triage-demostreamlit-app-3uubea.streamlit.app)
-(free hosting, so the first load after a quiet period can take a minute to wake up)
+Predict support-ticket priority and resolution time from ticket text and metadata, then inspect the factors behind each prediction. The project combines a training pipeline, a Flask API, and a Streamlit interface.
 
-An end-to-end ML system that reads an incoming support ticket (free text + metadata) and predicts:
+**Python · XGBoost · SHAP · Flask · Streamlit · PySpark · Docker**
 
-1. **Priority** (Low / Medium / High / Critical), a 4-class classifier
-2. **Time to resolution** in hours, a regressor
-3. **Why**: per-ticket SHAP explanations an agent can act on, plus an SLA-breach flag
+[Live demo](https://richithareddyy-ticket-triage-demostreamlit-app-3uubea.streamlit.app) · [Quick start](#quick-start) · [Results](#results) · [API](#api) · [Tests](#tests)
 
-It covers NLP and structured feature engineering (NLTK, PySpark), model comparison (Logistic Regression,
-Random Forest, XGBoost), explainability (SHAP), a Flask REST API, a Streamlit UI, Docker, and
-infrastructure-as-code for deploying to AWS ECS Fargate.
+## What it does
 
-**Stack:** Python · scikit-learn · XGBoost · SHAP · NLTK · PySpark · Flask · Streamlit · Docker · AWS CloudFormation (ECR, ECS Fargate, ALB)
+- Classifies priority as Low, Medium, High, or Critical.
+- Estimates resolution time in hours and flags predictions that exceed the configured SLA target.
+- Explains individual predictions with SHAP contributions and text signals.
+- Compares linear models, Random Forest, and XGBoost.
+- Includes local, Docker, and AWS deployment workflows.
 
----
+**Data scope:** Training and evaluation use synthetic support tickets. The reported results describe this generated dataset and are not evidence of performance on a real support queue.
 
 ## Results
 
-Held-out test set (3,000 tickets, never seen during model selection):
+Reported evaluation on a held-out synthetic test set of 3,000 tickets:
 
 | Task | Model | Metric | Baseline |
 |---|---|---|---|
