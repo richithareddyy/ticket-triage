@@ -1,0 +1,374 @@
+{
+  "data": {
+    "rows": 20000,
+    "train": 14000,
+    "val": 3000,
+    "test": 3000
+  },
+  "priority": {
+    "selected_model": "xgboost",
+    "comparison": {
+      "baseline_majority": {
+        "val": {
+          "accuracy": 0.35,
+          "macro_f1": 0.1296,
+          "weighted_f1": 0.1815
+        },
+        "test": {
+          "accuracy": 0.35,
+          "macro_f1": 0.1296,
+          "weighted_f1": 0.1815
+        },
+        "train_seconds": 2.5
+      },
+      "logistic_regression": {
+        "val": {
+          "accuracy": 0.671,
+          "macro_f1": 0.6862,
+          "weighted_f1": 0.6666
+        },
+        "test": {
+          "accuracy": 0.6707,
+          "macro_f1": 0.6842,
+          "weighted_f1": 0.6676
+        },
+        "train_seconds": 2.6
+      },
+      "random_forest": {
+        "val": {
+          "accuracy": 0.6827,
+          "macro_f1": 0.6992,
+          "weighted_f1": 0.6824
+        },
+        "test": {
+          "accuracy": 0.6817,
+          "macro_f1": 0.697,
+          "weighted_f1": 0.6817
+        },
+        "train_seconds": 4.4
+      },
+      "xgboost": {
+        "val": {
+          "accuracy": 0.6877,
+          "macro_f1": 0.702,
+          "weighted_f1": 0.6889
+        },
+        "test": {
+          "accuracy": 0.6867,
+          "macro_f1": 0.7007,
+          "weighted_f1": 0.6879
+        },
+        "train_seconds": 3.7
+      }
+    },
+    "final_test": {
+      "accuracy": 0.6883,
+      "macro_f1": 0.7051,
+      "weighted_f1": 0.6899
+    },
+    "classification_report": {
+      "Low": {
+        "precision": 0.7692307692307693,
+        "recall": 0.72,
+        "f1-score": 0.743801652892562,
+        "support": 750.0
+      },
+      "Medium": {
+        "precision": 0.6238938053097345,
+        "recall": 0.6714285714285714,
+        "f1-score": 0.6467889908256881,
+        "support": 1050.0
+      },
+      "High": {
+        "precision": 0.6591981132075472,
+        "recall": 0.6654761904761904,
+        "f1-score": 0.6623222748815166,
+        "support": 840.0
+      },
+      "Critical": {
+        "precision": 0.815625,
+        "recall": 0.725,
+        "f1-score": 0.7676470588235295,
+        "support": 360.0
+      },
+      "accuracy": 0.6883333333333334,
+      "macro avg": {
+        "precision": 0.7169869219370129,
+        "recall": 0.6954761904761905,
+        "f1-score": 0.705139994355824,
+        "support": 3000.0
+      },
+      "weighted avg": {
+        "precision": 0.6931209958642125,
+        "recall": 0.6883333333333334,
+        "f1-score": 0.6898944440377796,
+        "support": 3000.0
+      }
+    },
+    "confusion_matrix": {
+      "labels": [
+        "Low",
+        "Medium",
+        "High",
+        "Critical"
+      ],
+      "matrix": [
+        [
+          540,
+          203,
+          7,
+          0
+        ],
+        [
+          160,
+          705,
+          184,
+          1
+        ],
+        [
+          2,
+          221,
+          559,
+          58
+        ],
+        [
+          0,
+          1,
+          98,
+          261
+        ]
+      ]
+    },
+    "shap_importance": [
+      {
+        "feature": "text signal: P(Low)",
+        "mean_abs_shap": 0.66224
+      },
+      {
+        "feature": "text signal: P(Critical)",
+        "mean_abs_shap": 0.61588
+      },
+      {
+        "feature": "customer_tier",
+        "mean_abs_shap": 0.57998
+      },
+      {
+        "feature": "text signal: P(High)",
+        "mean_abs_shap": 0.25141
+      },
+      {
+        "feature": "text signal: P(Medium)",
+        "mean_abs_shap": 0.2276
+      },
+      {
+        "feature": "prior_tickets_30d",
+        "mean_abs_shap": 0.14542
+      },
+      {
+        "feature": "urgency_count",
+        "mean_abs_shap": 0.07042
+      },
+      {
+        "feature": "category",
+        "mean_abs_shap": 0.06407
+      },
+      {
+        "feature": "text_len",
+        "mean_abs_shap": 0.06392
+      },
+      {
+        "feature": "sentiment",
+        "mean_abs_shap": 0.04764
+      },
+      {
+        "feature": "question_count",
+        "mean_abs_shap": 0.03717
+      },
+      {
+        "feature": "upper_ratio",
+        "mean_abs_shap": 0.02917
+      },
+      {
+        "feature": "word_count",
+        "mean_abs_shap": 0.02708
+      },
+      {
+        "feature": "hour",
+        "mean_abs_shap": 0.023
+      },
+      {
+        "feature": "day_of_week",
+        "mean_abs_shap": 0.01662
+      },
+      {
+        "feature": "has_error_code",
+        "mean_abs_shap": 0.01485
+      },
+      {
+        "feature": "product",
+        "mean_abs_shap": 0.01241
+      },
+      {
+        "feature": "channel",
+        "mean_abs_shap": 0.01105
+      },
+      {
+        "feature": "attachments",
+        "mean_abs_shap": 0.01089
+      },
+      {
+        "feature": "exclamation_count",
+        "mean_abs_shap": 0.00621
+      }
+    ]
+  },
+  "resolution_time": {
+    "selected_model": "xgboost",
+    "comparison": {
+      "baseline_median": {
+        "val": {
+          "mae_hours": 22.972,
+          "median_ae_hours": 10.085,
+          "rmse_hours": 43.232,
+          "r2_log": -0.008
+        },
+        "test": {
+          "mae_hours": 24.445,
+          "median_ae_hours": 10.34,
+          "rmse_hours": 46.819,
+          "r2_log": -0.0071
+        },
+        "train_seconds": 0.9
+      },
+      "ridge": {
+        "val": {
+          "mae_hours": 12.008,
+          "median_ae_hours": 4.93,
+          "rmse_hours": 24.36,
+          "r2_log": 0.7853
+        },
+        "test": {
+          "mae_hours": 12.937,
+          "median_ae_hours": 4.897,
+          "rmse_hours": 26.821,
+          "r2_log": 0.7977
+        },
+        "train_seconds": 0.9
+      },
+      "random_forest": {
+        "val": {
+          "mae_hours": 11.729,
+          "median_ae_hours": 4.827,
+          "rmse_hours": 23.842,
+          "r2_log": 0.7983
+        },
+        "test": {
+          "mae_hours": 12.401,
+          "median_ae_hours": 4.716,
+          "rmse_hours": 25.72,
+          "r2_log": 0.8109
+        },
+        "train_seconds": 2.2
+      },
+      "xgboost": {
+        "val": {
+          "mae_hours": 11.45,
+          "median_ae_hours": 4.706,
+          "rmse_hours": 23.02,
+          "r2_log": 0.8027
+        },
+        "test": {
+          "mae_hours": 12.186,
+          "median_ae_hours": 4.611,
+          "rmse_hours": 25.305,
+          "r2_log": 0.8194
+        },
+        "train_seconds": 1.4
+      }
+    },
+    "final_test": {
+      "mae_hours": 12.154,
+      "median_ae_hours": 4.624,
+      "rmse_hours": 25.255,
+      "r2_log": 0.8205
+    },
+    "shap_importance": [
+      {
+        "feature": "text signal: est. log hours",
+        "mean_abs_shap": 0.66263
+      },
+      {
+        "feature": "customer_tier",
+        "mean_abs_shap": 0.34178
+      },
+      {
+        "feature": "channel",
+        "mean_abs_shap": 0.09245
+      },
+      {
+        "feature": "day_of_week",
+        "mean_abs_shap": 0.08089
+      },
+      {
+        "feature": "category",
+        "mean_abs_shap": 0.07024
+      },
+      {
+        "feature": "is_business_hours",
+        "mean_abs_shap": 0.06512
+      },
+      {
+        "feature": "attachments",
+        "mean_abs_shap": 0.04032
+      },
+      {
+        "feature": "prior_tickets_30d",
+        "mean_abs_shap": 0.03465
+      },
+      {
+        "feature": "urgency_count",
+        "mean_abs_shap": 0.02827
+      },
+      {
+        "feature": "hour",
+        "mean_abs_shap": 0.02814
+      },
+      {
+        "feature": "is_weekend",
+        "mean_abs_shap": 0.024
+      },
+      {
+        "feature": "text_len",
+        "mean_abs_shap": 0.01845
+      },
+      {
+        "feature": "sentiment",
+        "mean_abs_shap": 0.01722
+      },
+      {
+        "feature": "word_count",
+        "mean_abs_shap": 0.01278
+      },
+      {
+        "feature": "upper_ratio",
+        "mean_abs_shap": 0.01273
+      },
+      {
+        "feature": "question_count",
+        "mean_abs_shap": 0.00619
+      },
+      {
+        "feature": "has_error_code",
+        "mean_abs_shap": 0.00521
+      },
+      {
+        "feature": "product",
+        "mean_abs_shap": 0.00503
+      },
+      {
+        "feature": "exclamation_count",
+        "mean_abs_shap": 0.00169
+      }
+    ]
+  }
+}

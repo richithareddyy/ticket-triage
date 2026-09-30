@@ -1,0 +1,7 @@
+.venv/
+__pycache__/
+.pytest_cache/
+nltk_data/
+
+# Regenerate with `make data` / `make spark`
+data/
