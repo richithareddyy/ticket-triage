@@ -1,6 +1,11 @@
 """Streamlit front end for the triage API.
 
-    API_URL=http://localhost:5050 streamlit run ui/streamlit_app.py
+    API_URL=http://localhost:5050 streamlit run ui/streamlit_app.py   # talk to a running API
+    streamlit run ui/streamlit_app.py                                 # no API_URL: run the API in-process
+
+Without API_URL the app loads the same Flask app in-process (via its test client),
+so validation and responses are identical to the HTTP API. This is how the free
+single-process demo runs.
 """
 import datetime as dt
 import os
@@ -10,7 +15,7 @@ import pandas as pd
 import requests
 import streamlit as st
 
-API_URL = os.environ.get("API_URL", "http://localhost:5050").rstrip("/")
+API_URL = os.environ.get("API_URL", "").rstrip("/")
 PRIORITY_COLORS = {"Critical": "#c62828", "High": "#ef6c00", "Medium": "#f9a825", "Low": "#2e7d32"}
 PRODUCTS = ["Dashboard", "Mobile App", "API", "Billing Portal", "Reports", "Integrations Hub"]
 CATEGORIES = ["outage", "security", "data_loss", "bug", "performance", "login_access", "billing",
@@ -43,11 +48,34 @@ EXAMPLES = {
 st.set_page_config(page_title="Ticket Triage", layout="wide")
 
 
+class ApiError(Exception):
+    pass
+
+
+@st.cache_resource
+def local_client():
+    from api.app import create_app
+    return create_app().test_client()
+
+
+def call(method, path, params=None, json=None):
+    """Returns (status_code, json body) from the remote API or the in-process app."""
+    if not API_URL:
+        resp = local_client().open(path, method=method, query_string=params, json=json)
+        return resp.status_code, resp.get_json()
+    try:
+        r = requests.request(method, f"{API_URL}{path}", params=params, json=json, timeout=30)
+        return r.status_code, r.json()
+    except (requests.RequestException, ValueError) as e:
+        raise ApiError(str(e)) from e
+
+
 @st.cache_data(ttl=60)
 def get(path):
-    r = requests.get(f"{API_URL}{path}", timeout=10)
-    r.raise_for_status()
-    return r.json()
+    status, body = call("GET", path)
+    if status != 200:
+        raise ApiError(body.get("error", f"HTTP {status}") if body else f"HTTP {status}")
+    return body
 
 
 def contributions_chart(items, positive_label, negative_label):
@@ -80,11 +108,13 @@ st.title("Support Ticket Triage")
 st.caption("Predicts ticket priority and time-to-resolution, and explains each prediction with SHAP.")
 
 try:
-    health = get("/health")
-    st.sidebar.success(f"API connected\n\npriority: **{health['models']['priority']}**  \n"
+    with st.spinner("Loading models..."):
+        health = get("/health")
+    st.sidebar.success(f"{'API connected' if API_URL else 'Models loaded'}\n\n"
+                       f"priority: **{health['models']['priority']}**  \n"
                        f"resolution: **{health['models']['resolution']}**")
     st.sidebar.caption(f"Trained {health['trained_at'][:16].replace('T', ' ')} UTC")
-except requests.RequestException as e:
+except ApiError as e:
     st.sidebar.error(f"API unreachable at {API_URL}")
     st.error(f"Could not reach the prediction API: {e}")
     st.stop()
@@ -117,14 +147,13 @@ with tab_predict:
                       product=product, category=category, prior_tickets_30d=int(prior),
                       attachments=int(attachments), created_at=dt.datetime.combine(date, time).isoformat())
         try:
-            r = requests.post(f"{API_URL}/predict", params={"explain": "true"}, json=ticket, timeout=30)
-        except requests.RequestException as e:
+            status, res = call("POST", "/predict", params={"explain": "true"}, json=ticket)
+        except ApiError as e:
             st.error(f"Request failed: {e}")
             st.stop()
-        if r.status_code != 200:
-            st.error(r.json().get("details") or r.json().get("error"))
+        if status != 200:
+            st.error(res.get("details") or res.get("error"))
             st.stop()
-        res = r.json()
 
         color = PRIORITY_COLORS[res["priority"]]
         m1, m2, m3, m4 = st.columns(4)
@@ -161,13 +190,13 @@ with tab_predict:
             contributions_chart(exp["resolution_time"], "slower", "faster")
             st.caption("Words driving the text signal: " + ", ".join(
                 f"`{t['term']}` ({t['weight']:+.2f})" for t in exp["resolution_key_terms"]))
-        st.caption(f"API latency: {res['latency_ms']} ms")
+        st.caption(f"Model latency: {res['latency_ms']} ms")
 
 with tab_model:
     try:
         m = get("/model")
-    except requests.RequestException:
-        st.info("Model metrics are not available from the API.")
+    except ApiError:
+        st.info("Model metrics are not available.")
         st.stop()
     p, rt = m["priority"], m["resolution_time"]
     c1, c2, c3, c4 = st.columns(4)

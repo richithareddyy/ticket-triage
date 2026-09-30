@@ -1,7 +1,7 @@
 PY := .venv/bin/python
 N ?= 20000
 
-.PHONY: help setup data train train-spark spark test api ui up down space publish deploy teardown clean
+.PHONY: help setup data train train-spark spark test api ui up down space demo deploy teardown clean
 
 help:
 	@echo "setup        create .venv and install dependencies"
@@ -12,8 +12,8 @@ help:
 	@echo "test         run the test suite (+ Spark parity test in Docker)"
 	@echo "api / ui     run the Flask API (:5050) / Streamlit UI (:8501) locally"
 	@echo "up / down    start / stop the Dockerized API + UI"
-	@echo "space        run the single-container demo locally (:7860)"
-	@echo "publish      publish the demo to a Hugging Face Space (SPACE=user/name)"
+	@echo "space        run API + UI in a single container (:7860)"
+	@echo "demo         run the single-process Streamlit Cloud demo locally (:8501)"
 	@echo "deploy       push images to ECR and deploy to ECS Fargate (needs AWS_REGION)"
 	@echo "teardown     delete the AWS stack and ECR repos"
 
@@ -57,9 +57,8 @@ space:
 	docker build --target space -t ticket-triage-space .
 	docker run --rm -p 7860:7860 ticket-triage-space
 
-publish:
-	@test -n "$(SPACE)" || { echo "usage: make publish SPACE=<hf-username>/ticket-triage"; exit 1; }
-	$(PY) deploy/huggingface/publish.py --space $(SPACE) $(if $(GITHUB_URL),--github-url $(GITHUB_URL))
+demo:
+	.venv/bin/streamlit run demo/streamlit_app.py
 
 deploy:
 	./deploy/aws/deploy.sh

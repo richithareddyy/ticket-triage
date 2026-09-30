@@ -4,4 +4,3 @@ pytest==8.4.2
 pyarrow==21.0.0
 # PySpark needs a Java 17 runtime; use `make spark-docker` if Java isn't installed.
 pyspark==3.5.3
-huggingface_hub==1.8.0

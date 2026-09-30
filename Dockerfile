@@ -2,7 +2,7 @@
 # Targets:
 #   api   - Flask REST API served by gunicorn (default)
 #   ui    - Streamlit front end
-#   space - API + UI in one container (free demo hosting)
+#   space - API + UI in one container (single-service Docker hosts)
 #   docker build --target api -t ticket-triage-api .
 #   docker build --target ui  -t ticket-triage-ui .
 
@@ -40,7 +40,7 @@ HEALTHCHECK --interval=30s --timeout=5s CMD curl -fs http://localhost:8501/_stco
 CMD ["streamlit", "run", "ui/streamlit_app.py", "--server.port=8501", "--server.address=0.0.0.0", \
      "--server.headless=true", "--browser.gatherUsageStats=false", "--client.toolbarMode=viewer"]
 
-# Single-container demo (API + UI) for free hosts such as Hugging Face Spaces.
+# Single-container image (API + UI) for hosts that run one Docker service.
 #   docker build --target space -t ticket-triage-space . && docker run -p 7860:7860 ticket-triage-space
 FROM api AS space
 USER root
