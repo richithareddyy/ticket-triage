@@ -217,7 +217,7 @@ with st.sidebar:
         st.markdown(f"- Priority macro-F1: **{metrics['priority']['macro_f1']:.3f}**\n"
                     f"- Resolution MAE: **{metrics['resolution_time']['mae_hours']:.1f} h**")
     st.divider()
-    st.page_link(REPO_URL, label="Source code on GitHub", icon=":material/code:")
+    st.markdown(f":material/code: [Source code on GitHub]({REPO_URL})")
     st.caption("Trained on a synthetic ticket dataset with a known structure; real ticket data is proprietary.")
 
 tab_predict, tab_model = st.tabs([":material/bolt: Triage a ticket", ":material/insights: Model performance"])
