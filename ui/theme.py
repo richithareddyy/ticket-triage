@@ -1,13 +1,13 @@
-"""Design system for the Streamlit UI.
+"""Visual language for the triage UI.
 
-The base palette lives in `.streamlit/config.toml` ([theme]) and is read here, so
-Streamlit widgets, Altair charts and the few custom HTML components share one
-source of truth. This module adds the semantic tokens Streamlit has no slot for
-(priority colors, SHAP direction colors, surfaces, shadows) and a small CSS layer.
+Base colors live in `.streamlit/config.toml` ([theme]) and are read here, so
+Streamlit widgets, Altair charts and the few custom HTML elements share one
+source of truth. The look borrows from support tooling: paper background, ink
+text, one teal accent, monospace field labels, rules instead of boxes, and
+priority color used only where it carries meaning.
 """
 from html import escape
 
-import altair as alt
 import streamlit as st
 
 
@@ -18,96 +18,70 @@ def _opt(name, fallback):
         return fallback
 
 
-PRIMARY = _opt("primaryColor", "#3B5BDB")
-BACKGROUND = _opt("backgroundColor", "#F6F7FB")
-SUBTLE = _opt("secondaryBackgroundColor", "#EEF1F7")
-TEXT = _opt("textColor", "#1B2333")
-BORDER = _opt("borderColor", "#DCE1EA")
-MUTED = _opt("grayColor", "#687287")
-SURFACE = "#FFFFFF"
+ACCENT = _opt("primaryColor", "#0E6B6B")
+PAPER = _opt("backgroundColor", "#FAFAF7")
+SUBTLE = _opt("secondaryBackgroundColor", "#F1F0EA")
+INK = _opt("textColor", "#1D2126")
+RULE = _opt("borderColor", "#DDDBD3")
+MUTED = _opt("grayColor", "#6A6E75")
 
-# Ordinal priority scale: fg/bg pairs meet WCAG AA contrast for badge text.
-PRIORITY = {
-    "Low": {"fg": "#1F7A4D", "bg": "#E3F4EA", "bar": "#3C9D6D"},
-    "Medium": {"fg": "#7A5E00", "bg": "#FBF3D5", "bar": "#D4A72C"},
-    "High": {"fg": "#A84A12", "bg": "#FCE9DC", "bar": "#DD7A37"},
-    "Critical": {"fg": "#B42D2D", "bg": "#FBE3E1", "bar": "#C94A43"},
-}
-STATUS = {
-    "ok": {"fg": "#1F7A4D", "bg": "#E3F4EA"},
-    "warn": {"fg": "#A84A12", "bg": "#FCE9DC"},
-    "info": {"fg": PRIMARY, "bg": "#E7ECFB"},
-    "neutral": {"fg": MUTED, "bg": SUBTLE},
-}
-# SHAP direction: warm pushes the prediction up, primary pulls it down.
-UP, DOWN = "#D2553F", PRIMARY
+# Ordinal priority scale; each color meets 4.5:1 contrast on the paper background.
+PRIORITY = {"Low": "#3F7D58", "Medium": "#8A6D10", "High": "#B4561F", "Critical": "#B3261E"}
+OK, WARN = "#3F7D58", "#B4561F"
+# SHAP direction: warm raises the prediction, accent lowers it.
+UP, DOWN = "#B4561F", ACCENT
+MONO = '"Source Code Pro", ui-monospace, SFMono-Regular, Menlo, monospace'
 
 CSS = f"""
 <style>
-:root {{
-  --tt-primary: {PRIMARY}; --tt-bg: {BACKGROUND}; --tt-surface: {SURFACE}; --tt-subtle: {SUBTLE};
-  --tt-text: {TEXT}; --tt-muted: {MUTED}; --tt-border: {BORDER};
-  --tt-radius: 12px; --tt-shadow: 0 1px 2px rgba(16, 24, 40, .05), 0 1px 3px rgba(16, 24, 40, .04);
-}}
-.block-container {{ max-width: 1200px; padding-top: 3.2rem; padding-bottom: 3rem; }}
+.block-container {{ max-width: 1120px; padding-top: 3.4rem; padding-bottom: 2.5rem; }}
 
-/* Cards: st.container(key="card-...") */
-[class*="st-key-card"] {{
-  background: var(--tt-surface); border: 1px solid var(--tt-border); border-radius: var(--tt-radius);
-  box-shadow: var(--tt-shadow); padding: 1.1rem 1.25rem 1.2rem; animation: tt-fade .18s ease-out;
-}}
-[data-testid="stMetric"] {{ background: var(--tt-surface); box-shadow: var(--tt-shadow); }}
+.tt-eyebrow, .tt-label {{ font-family: {MONO}; font-size: .72rem; letter-spacing: .08em;
+  text-transform: uppercase; color: {MUTED}; margin: 0; }}
+.tt-eyebrow {{ margin: 0 0 .2rem; }}
+.tt-title {{ font-size: 2rem; font-weight: 700; margin: 0; line-height: 1.15; color: {INK}; letter-spacing: -.01em; }}
+.tt-lede {{ color: {MUTED}; margin: .35rem 0 .2rem; font-size: 1.02rem; }}
+.tt-meta {{ font-family: {MONO}; font-size: .78rem; color: {MUTED}; margin: 0 0 1rem; }}
+.tt-meta .ok {{ color: {OK}; }}
 
-/* Header */
-.tt-header h1 {{ font-size: 1.9rem; font-weight: 700; letter-spacing: -.01em; margin: 0 0 .25rem; padding: 0; }}
-.tt-header p {{ color: var(--tt-muted); margin: 0 0 .75rem; font-size: 1rem; }}
-.tt-chips {{ display: flex; flex-wrap: wrap; gap: .4rem; margin-bottom: .4rem; }}
+.tt-h {{ font-size: 1.05rem; font-weight: 650; color: {INK}; margin: 1.6rem 0 .15rem;
+  padding-top: .9rem; border-top: 1px solid {RULE}; }}
+.tt-h.first {{ border-top: 0; padding-top: 0; margin-top: .4rem; }}
+.tt-note {{ color: {MUTED}; font-size: .9rem; margin: 0 0 .6rem; }}
 
-/* Section titles inside cards */
-.tt-section {{ font-size: .78rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
-  color: var(--tt-muted); margin: 0 0 .35rem; }}
-.tt-card-title {{ font-size: 1.1rem; font-weight: 650; margin: 0 0 .15rem; }}
-.tt-card-sub {{ color: var(--tt-muted); font-size: .88rem; margin: 0 0 .6rem; }}
+/* Triage verdict: a priority stripe, then facts separated by rules */
+.tt-verdict {{ display: flex; flex-wrap: wrap; align-items: stretch;
+  border-left: 4px solid var(--p); padding: .2rem 0 .2rem 1.1rem; margin: .6rem 0 1rem; }}
+.tt-verdict .main {{ padding-right: 2rem; min-width: 11rem; }}
+.tt-priority {{ font-size: 2.1rem; font-weight: 750; line-height: 1.1; color: var(--p); margin-top: .1rem; }}
+.tt-verdict .conf {{ font-size: .82rem; color: {MUTED}; margin-top: .15rem; }}
+.tt-fact {{ padding: 0 1.6rem; border-left: 1px solid {RULE}; min-width: 8.5rem; }}
+.tt-fact .v {{ font-size: 1.35rem; font-weight: 650; color: {INK}; line-height: 1.3; margin-top: .15rem; }}
+.tt-fact .s {{ font-size: .82rem; color: {MUTED}; margin-top: .1rem; }}
+.tt-fact .s.ok {{ color: {OK}; }}
+.tt-fact .s.warn {{ color: {WARN}; font-weight: 600; }}
+.tt-facts {{ display: flex; flex-wrap: wrap; margin: .4rem 0 .6rem; }}
+.tt-facts .tt-fact:first-child {{ border-left: 0; padding-left: 0; }}
 
-/* Badges / chips */
-.tt-badge {{ display: inline-flex; align-items: center; gap: .35rem; border-radius: 999px;
-  padding: .18rem .65rem; font-size: .82rem; font-weight: 600; line-height: 1.4; white-space: nowrap; }}
-.tt-badge.lg {{ font-size: 1.35rem; padding: .25rem .9rem; font-weight: 700; }}
-.tt-dot {{ width: .5rem; height: .5rem; border-radius: 50%; background: currentColor; display: inline-block; }}
-.tt-terms {{ display: flex; flex-wrap: wrap; gap: .35rem; margin-top: .25rem; }}
-.tt-term {{ font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .8rem; border-radius: 6px;
-  padding: .12rem .45rem; border: 1px solid var(--tt-border); background: var(--tt-subtle); }}
+.tt-split {{ font-family: {MONO}; font-size: .78rem; color: {MUTED}; display: flex; flex-wrap: wrap;
+  gap: .35rem 1.2rem; margin: -.2rem 0 .4rem; }}
+.tt-split b {{ font-weight: 600; }}
+.tt-terms {{ font-family: {MONO}; font-size: .8rem; color: {MUTED}; margin: .1rem 0 .4rem; line-height: 1.8; }}
+.tt-terms span {{ white-space: nowrap; margin-right: .9rem; }}
+.tt-empty {{ color: {MUTED}; padding: 1.1rem 0 0; border-top: 1px solid {RULE}; margin-top: 1.2rem; }}
+.tt-foot {{ border-top: 1px solid {RULE}; margin-top: 2.5rem; padding-top: .8rem; color: {MUTED};
+  font-size: .82rem; }}
 
-/* Stat cards */
-.tt-stat {{ background: var(--tt-surface); border: 1px solid var(--tt-border); border-radius: var(--tt-radius);
-  box-shadow: var(--tt-shadow); padding: .9rem 1.1rem; height: 100%; min-height: 118px;
-  animation: tt-fade .18s ease-out; }}
-.tt-stat .label {{ color: var(--tt-muted); font-size: .85rem; font-weight: 600; margin-bottom: .35rem; }}
-.tt-stat .value {{ font-size: 1.75rem; font-weight: 700; line-height: 1.2; color: var(--tt-text); }}
-.tt-stat .sub {{ color: var(--tt-muted); font-size: .85rem; margin-top: .35rem; }}
+[data-testid="stFormSubmitButton"] button {{ padding: 0 1.3rem; font-weight: 600; }}
+[data-baseweb="tab"] {{ font-weight: 600; }}
+[data-testid="stForm"] {{ border: 0; padding: 0; }}
 
-/* Empty state */
-.tt-empty {{ text-align: center; padding: 2.2rem 1rem; color: var(--tt-muted); border: 1.5px dashed var(--tt-border);
-  border-radius: var(--tt-radius); background: rgba(255, 255, 255, .6); }}
-.tt-empty .title {{ color: var(--tt-text); font-weight: 650; font-size: 1.05rem; margin-bottom: .25rem; }}
-
-/* Controls */
-button, [data-baseweb="tab"], [data-baseweb="select"] > div, input, textarea {{
-  transition: background-color .15s ease, border-color .15s ease, box-shadow .15s ease, color .15s ease; }}
-[data-testid="stFormSubmitButton"] button {{ min-height: 2.6rem; padding: 0 1.4rem; font-weight: 600; }}
-[data-baseweb="tab-list"] {{ gap: .25rem; border-bottom: 1px solid var(--tt-border); }}
-[data-baseweb="tab"] {{ font-weight: 600; padding: .55rem .9rem; border-radius: 8px 8px 0 0; }}
-[data-baseweb="tab"]:hover {{ background: var(--tt-subtle); }}
-[data-testid="stSidebar"] {{ border-right: 1px solid var(--tt-border); }}
-[data-testid="stSidebar"] a {{ text-decoration: none; }}
-
-@keyframes tt-fade {{ from {{ opacity: 0; transform: translateY(4px); }} to {{ opacity: 1; transform: none; }} }}
-@media (prefers-reduced-motion: reduce) {{ * {{ animation: none !important; transition: none !important; }} }}
 @media (max-width: 640px) {{
-  .block-container {{ padding-top: 3.6rem; padding-left: 1rem; padding-right: 1rem; }}
-  [class*="st-key-card"] {{ padding: .9rem .95rem 1rem; }}
-  .tt-header h1 {{ font-size: 1.5rem; }}
-  .tt-stat {{ min-height: 0; }}
+  .block-container {{ padding: 3.6rem 1rem 2rem; }}
+  .tt-title {{ font-size: 1.6rem; }}
+  .tt-verdict .main {{ width: 100%; padding: 0 0 .7rem; }}
+  .tt-fact {{ border-left: 0; padding: .5rem 1.4rem 0 0; min-width: 45%; }}
+  .tt-facts .tt-fact {{ padding-left: 0; }}
 }}
 </style>
 """
@@ -117,47 +91,43 @@ def apply():
     st.markdown(CSS, unsafe_allow_html=True)
 
 
-def badge(text, fg, bg, large=False, dot=True):
-    size = " lg" if large else ""
-    dot_html = '<span class="tt-dot"></span>' if dot else ""
-    return (f'<span class="tt-badge{size}" style="color:{fg};background:{bg}">'
-            f'{dot_html}{escape(str(text))}</span>')
+def html(markup):
+    st.markdown(markup, unsafe_allow_html=True)
 
 
-def priority_badge(priority, large=False):
-    c = PRIORITY[priority]
-    return badge(priority, c["fg"], c["bg"], large=large)
+def heading(text, note="", first=False):
+    cls = "tt-h first" if first else "tt-h"
+    note_html = f'<div class="tt-note">{escape(note)}</div>' if note else ""
+    html(f'<div class="{cls}">{escape(text)}</div>{note_html}')
 
 
-def status_badge(text, kind="neutral", dot=True):
-    c = STATUS[kind]
-    return badge(text, c["fg"], c["bg"], dot=dot)
+def label(text):
+    html(f'<div class="tt-label">{escape(text)}</div>')
 
 
-def stat_card(label, value_html, sub_html=""):
-    sub = f'<div class="sub">{sub_html}</div>' if sub_html else ""
-    return (f'<div class="tt-stat"><div class="label">{escape(label)}</div>'
-            f'<div class="value">{value_html}</div>{sub}</div>')
+def fact(name, value, sub="", tone=""):
+    tone_cls = f" {tone}" if tone else ""
+    sub_html = f'<div class="s{tone_cls}">{escape(sub)}</div>' if sub else ""
+    return (f'<div class="tt-fact"><div class="tt-label">{escape(name)}</div>'
+            f'<div class="v">{escape(value)}</div>{sub_html}</div>')
 
 
-def card_header(title, subtitle=""):
-    sub = f'<p class="tt-card-sub">{escape(subtitle)}</p>' if subtitle else ""
-    st.markdown(f'<p class="tt-card-title">{escape(title)}</p>{sub}', unsafe_allow_html=True)
+def facts(items_html):
+    return f'<div class="tt-facts">{items_html}</div>'
 
 
-def section_label(text):
-    st.markdown(f'<p class="tt-section">{escape(text)}</p>', unsafe_allow_html=True)
-
-
-def empty_state(title, body):
-    st.markdown(f'<div class="tt-empty"><div class="title">{escape(title)}</div>'
-                f'<div>{escape(body)}</div></div>', unsafe_allow_html=True)
+def verdict(priority, confidence_note, facts_html):
+    return (f'<div class="tt-verdict" style="--p:{PRIORITY[priority]}">'
+            f'<div class="main"><div class="tt-label">Priority</div>'
+            f'<div class="tt-priority">{escape(priority)}</div>'
+            f'<div class="conf">{escape(confidence_note)}</div></div>'
+            f'{facts_html}</div>')
 
 
 def style_chart(chart):
-    """Shared Altair styling so every chart matches the palette and type scale."""
+    """Shared Altair styling: no frames, quiet axes, the UI's type colors."""
     return (chart.configure(background="transparent").configure_view(stroke=None)
-            .configure_axis(labelColor=MUTED, titleColor=MUTED, gridColor="#E9EDF3", domainColor=BORDER,
-                            tickColor=BORDER, labelFontSize=12, titleFontSize=12, titleFontWeight=600)
-            .configure_legend(labelColor=TEXT, labelFontSize=12, symbolType="circle")
+            .configure_axis(labelColor=MUTED, titleColor=MUTED, gridColor="#ECEAE3", domainColor=RULE,
+                            tickColor=RULE, labelFontSize=12, titleFontSize=11, titleFontWeight=500)
+            .configure_legend(labelColor=INK, labelFontSize=12, symbolType="square")
             .configure_axisY(labelLimit=320))
