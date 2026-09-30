@@ -1,5 +1,8 @@
 # Support Ticket Triage & Resolution-Time Predictor
 
+**Live demo:** [richithareddyy-ticket-triage-demostreamlit-app-3uubea.streamlit.app](https://richithareddyy-ticket-triage-demostreamlit-app-3uubea.streamlit.app)
+(free hosting, so the first load after a quiet period can take a minute to wake up)
+
 An end-to-end ML system that reads an incoming support ticket (free text + metadata) and predicts:
 
 1. **Priority** (Low / Medium / High / Critical), a 4-class classifier
@@ -191,7 +194,7 @@ Required fields: `subject`, `description`, `channel` (email/web/chat/phone), `pr
 `customer_tier` (free/pro/enterprise). Optional: `category`, `created_at` (defaults to now),
 `prior_tickets_30d`, `attachments`, `ticket_id`. Invalid input returns `400` with per-field messages.
 
-## Free public demo (Render)
+## Free public demo
 
 [`demo/streamlit_app.py`](demo/streamlit_app.py) runs the Streamlit UI with the Flask app loaded
 in-process (through its test client), so validation and responses match the HTTP API exactly and only
@@ -202,15 +205,17 @@ one process is needed. [`demo/Dockerfile`](demo/Dockerfile) packages it into a l
 make demo             # run it locally at http://localhost:8501
 ```
 
-To host it free on [Render](https://render.com):
+The live demo runs on **Streamlit Community Cloud** (main file `demo/streamlit_app.py`, Python 3.11,
+dependencies from [`demo/requirements.txt`](demo/requirements.txt)).
+
+Alternatively, to host it free on [Render](https://render.com):
 
 1. Push this repo to GitHub (public).
 2. Sign in to Render with GitHub, choose **New → Blueprint**, and select this repository.
    Render reads [`render.yaml`](render.yaml) and builds `demo/Dockerfile` on the free plan.
 
 Free instances sleep after about 15 minutes without traffic, so the first visit after a break takes
-up to a minute to wake up. The same `demo/streamlit_app.py` also works on Streamlit Community Cloud
-(main file `demo/streamlit_app.py`, dependencies from `demo/requirements.txt`).
+up to a minute to wake up.
 
 For hosts that run a single Docker service with more memory, `make space` builds an image with the
 separate API and UI processes together.
