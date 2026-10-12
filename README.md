@@ -18,14 +18,14 @@ Predict support-ticket priority and resolution time from ticket text and metadat
 
 ## Results
 
-Reported evaluation on a held-out synthetic test set of 3,000 tickets:
+The committed [`artifacts/metrics.json`](artifacts/metrics.json) records 14,000 training, 3,000 validation, and 3,000 test tickets. [`triage/train.py`](triage/train.py) selects each model on validation, refits the winner on training plus validation, then reports the final test results below:
 
 | Task | Model | Metric | Baseline |
 |---|---|---|---|
 | Priority | **XGBoost** | **macro-F1 0.705**, accuracy 0.688 | majority class: macro-F1 0.130 |
 | Resolution time | **XGBoost** | **MAE 12.2 h**, median AE 4.6 h, R² (log) 0.82 | median: MAE 24.4 h |
 
-Model comparison (test set, each trained on the same split):
+Candidate-model test scores before that refit (all candidates use the same training split). This is why the XGBoost macro-F1 here is 0.701 rather than the final model’s 0.705:
 
 | Priority | macro-F1 | | Resolution time | MAE (h) |
 |---|---|---|---|---|
@@ -38,10 +38,8 @@ Model comparison (test set, each trained on the same split):
 - XGBoost's edge over the linear models comes from **interactions**. For example, off-hours tickets wait
   longer, except for enterprise customers who have 24/7 support, and "urgent" means less coming from
   free-tier customers.
-- The ~0.70 F1 ceiling is deliberate: triage labels in real queues are subjective, so the data
-  generator adds label noise. A model scoring near 1.0 here would indicate leakage.
-- API latency with full SHAP explanations: **~15–40 ms** per ticket once warm (the first request or two
-  after startup take up to ~100 ms).
+- The generator adds label noise. The observed F1 is a result on this synthetic distribution, not a measured ceiling for real support queues.
+- The API returns request timing as `latency_ms`; there is no committed latency benchmark report.
 
 <p float="left">
   <img src="artifacts/shap_priority.png" width="49%" />
@@ -91,9 +89,9 @@ tells an agent nothing. A linear text model now compresses the text into a few d
 with the metadata. The text scores are produced **out of fold** during training so the final model never
 sees text predictions fit on its own labels.
 
-The result is explanations at two levels, both exact:
+The interface exposes two different kinds of explanation:
 - **SHAP on the final model**, e.g. "text signal P(Critical)=0.94: +1.85, customer_tier=enterprise: +0.88"
-- **Linear term weights** behind the text signal, e.g. `urgent` +1.48, `nothing load` +0.55
+- **Linear term contributions** to the text model’s raw score, e.g. `urgent` +1.48, `nothing load` +0.55
 
 One-hot columns are summed back into their source field, e.g. a single `customer_tier` contribution,
 and a test confirms the grouped contributions plus the base value add up to the model output.
@@ -108,8 +106,7 @@ Errors are reported back in hours. Each prediction is compared to a per-priority
 ## Data
 
 Real support-ticket datasets with resolution times are proprietary, so [`triage/data.py`](triage/data.py)
-generates a realistic synthetic corpus (20,000 tickets by default) with a **known causal structure**.
-That makes it possible to check that the models and SHAP recover the true drivers:
+generates a synthetic corpus (20,000 tickets by default) with explicit rules connecting issue type, customer metadata, priority, and resolution time. Those rules make model behavior easier to inspect; SHAP explains the fitted model and does not establish causal effects:
 
 - 10 issue types (outage, security, data loss, bug, performance, login, billing, integration, how-to,
   feature request), each with its own severity and base resolution time
@@ -124,6 +121,8 @@ To use real data, provide a CSV with the columns in `triage/features.py::RAW_COL
 `priority` and `resolution_hours`.
 
 ---
+
+The engineering question is how to turn ticket text into predictions that can be served and inspected. The out-of-fold text stage keeps label leakage out of the stacked training features, while grouped SHAP values make metadata contributions easier to read.
 
 ## Quick start
 
@@ -253,6 +252,10 @@ make test
 - **API**: single/batch requests, explanations, ID passthrough, optional-field defaults, 400/404/405 cases
 - **Spark parity**: the PySpark and pandas pipelines produce identical features (runs in Docker). This
   test caught a real bug: Spark's `round()` rounds half-up while NumPy rounds half-to-even.
+
+## Limits of the predictions
+
+The train, validation, and test rows come from the same generator and use a random stratified split. They do not test temporal drift or transfer to real customer language. The SLA flag compares a point estimate with a fixed threshold; it is not a calibrated probability of missing an SLA. SHAP values are in the final model's output space, and the displayed top terms are only part of the linear text model's score.
 
 ## Project layout
 
