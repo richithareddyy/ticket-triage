@@ -71,7 +71,7 @@ def local_client():
 
 
 def call(method, path, params=None, json=None):
-    """Returns (status_code, json body) from the remote API or the in-process app."""
+    """(status, body) from the remote API, or from the in-process app when API_URL is unset."""
     if not API_URL:
         resp = local_client().open(path, method=method, query_string=params, json=json)
         return resp.status_code, resp.get_json()
@@ -100,6 +100,16 @@ FEATURE_LABELS = {
 }
 
 
+def label(name):
+    return MODEL_NAMES.get(name, name.replace("_", " ").capitalize())
+
+
+def format_hours(hours):
+    if hours < 1:
+        return f"{hours * 60:.0f} min"
+    return f"{hours:.1f} h" if hours < 48 else f"{hours / 24:.1f} days"
+
+
 def feature_label(name, value=""):
     """Readable name for a model feature; the API keeps its technical names."""
     if name.startswith("text signal: P("):
@@ -115,20 +125,7 @@ def feature_label(name, value=""):
     return f"{pretty} ({value})" if value != "" else pretty
 
 
-def label(name):
-    return MODEL_NAMES.get(name, name.replace("_", " ").capitalize())
-
-
-def format_hours(hours):
-    if hours < 1:
-        return f"{hours * 60:.0f} min"
-    return f"{hours:.1f} h" if hours < 48 else f"{hours / 24:.1f} days"
-
-
-# --- Charts ------------------------------------------------------------------------
-
 def contributions_chart(items, positive_label, negative_label):
-    """Horizontal SHAP bars, largest impact first; warm raises the prediction, teal lowers it."""
     df = pd.DataFrame(items)
     df["label"] = df.apply(lambda r: feature_label(r["feature"], r["value"]), axis=1)
     df["direction"] = df["shap"].map(lambda v: positive_label if v > 0 else negative_label)
@@ -176,6 +173,15 @@ def confusion_chart(labels, matrix):
     st.altair_chart(theme.style_chart((heat + text).properties(height=240)), use_container_width=True)
 
 
+def comparison_table(block, columns, fmt):
+    rows = []
+    for name, v in block["comparison"].items():
+        row = {"Model": label(name) + ("  ✓" if name == block["selected_model"] else "")}
+        row.update({title: v["val"][key] for key, title in columns.items()})
+        rows.append(row)
+    st.dataframe(pd.DataFrame(rows).set_index("Model").style.format(fmt), width="stretch")
+
+
 def key_terms(terms):
     if not terms:
         return
@@ -185,8 +191,6 @@ def key_terms(terms):
     theme.html(f'<div class="tt-small" style="margin-top:.25rem">Words behind the text signal</div>'
                f'<div class="tt-terms">{words}</div>')
 
-
-# --- Header ------------------------------------------------------------------------
 
 try:
     health = get("/health")
@@ -207,8 +211,6 @@ head_r.markdown(
     + (f' · test macro-F1 {f1:.3f}' if f1 else "") + "</div>", unsafe_allow_html=True)
 
 tab_triage, tab_eval = st.tabs(["Triage", "Model evaluation"])
-
-# --- Triage: ticket → context → prediction → explanation ---------------------------
 
 with tab_triage:
     work, side = st.columns([7, 5], gap="large")
@@ -298,8 +300,6 @@ with tab_triage:
             contributions_chart(exp["resolution_time"], "slower", "faster")
             key_terms(exp["resolution_key_terms"])
 
-# --- Model evaluation ---------------------------------------------------------------
-
 with tab_eval:
     try:
         m = get("/model")
@@ -319,14 +319,6 @@ with tab_eval:
                    ("Resolution MAE", f"{rf['mae_hours']:.1f} h", f"baseline {base_mae:.1f} h" if base_mae else ""),
                    ("Median error", f"{rf['median_ae_hours']:.1f} h", f"R² (log) {rf['r2_log']:.2f}"),
                ]))
-
-    def comparison_table(block, columns, fmt):
-        rows = []
-        for name, v in block["comparison"].items():
-            row = {"Model": label(name) + ("  ✓" if name == block["selected_model"] else "")}
-            row.update({title: v["val"][key] for key, title in columns.items()})
-            rows.append(row)
-        st.dataframe(pd.DataFrame(rows).set_index("Model").style.format(fmt), width="stretch")
 
     theme.html('<div class="tt-h">Models compared</div>'
                '<div class="tt-muted">Validation scores. ✓ marks the model in use.</div>')

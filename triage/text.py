@@ -42,12 +42,12 @@ def _tools():
 
 
 def clean_text(text):
-    """Lowercase, tokenize, drop stopwords, lemmatize. Error codes are collapsed to a token."""
+    # Collapse error codes to one token so "error 500" and "HTTP 503" share a feature.
     stop, lemmatizer, _ = _tools()
     text = re.sub(ERROR_CODE_RE, " errcode ", (text or "").lower())
     return " ".join(lemmatizer.lemmatize(t) for t in TOKEN_RE.findall(text) if t not in stop)
 
 
 def sentiment(text):
-    """VADER compound score in [-1, 1]; negative means an angry/frustrated customer."""
+    """VADER compound score in [-1, 1]."""
     return _tools()[2].polarity_scores(text or "")["compound"]

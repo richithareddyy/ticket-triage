@@ -83,9 +83,12 @@ def main():
     feats = build_features(raw)
     feats.write.mode("overwrite").parquet(args.output)
     print(f"wrote {feats.count():,} rows -> {args.output}")
-    feats.groupBy("priority").agg(F.count("*").alias("n"), F.round(F.avg("resolution_hours"), 1)
-                                  .alias("avg_hours"), F.round(F.avg("urgency_count"), 2).alias("avg_urgency")
-                                  ).orderBy("priority").show()
+    summary = feats.groupBy("priority").agg(
+        F.count("*").alias("n"),
+        F.round(F.avg("resolution_hours"), 1).alias("avg_hours"),
+        F.round(F.avg("urgency_count"), 2).alias("avg_urgency"),
+    )
+    summary.orderBy("priority").show()
     spark.stop()
 
 

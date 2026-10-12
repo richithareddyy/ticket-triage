@@ -19,7 +19,7 @@ MODEL_PATH = os.environ.get("MODEL_PATH", "artifacts/model.joblib")
 METRICS_PATH = os.environ.get("METRICS_PATH", "artifacts/metrics.json")
 MAX_BATCH = 100
 MAX_TEXT = 10_000
-ENUMS = {
+ALLOWED = {
     "channel": {"email", "web", "chat", "phone"},
     "customer_tier": {"free", "pro", "enterprise"},
 }
@@ -29,21 +29,21 @@ log = logging.getLogger("triage-api")
 
 
 def validate_ticket(t, i):
-    errors = []
     if not isinstance(t, dict):
         return [f"tickets[{i}]: must be an object"]
-    for field in ("subject", "description"):
-        if not isinstance(t.get(field), str):
+    errors = []
+    texts = [t.get("subject"), t.get("description")]
+    for field, value in zip(("subject", "description"), texts):
+        if not isinstance(value, str):
             errors.append(f"tickets[{i}].{field}: required string")
-        elif len(t[field]) > MAX_TEXT:
+        elif len(value) > MAX_TEXT:
             errors.append(f"tickets[{i}].{field}: longer than {MAX_TEXT} characters")
-    if isinstance(t.get("subject"), str) and isinstance(t.get("description"), str) \
-            and not (t["subject"].strip() or t["description"].strip()):
+    if all(isinstance(x, str) for x in texts) and not any(x.strip() for x in texts):
         errors.append(f"tickets[{i}]: subject and description are both empty")
     for field in ("channel", "customer_tier", "product"):
         if not isinstance(t.get(field), str):
             errors.append(f"tickets[{i}].{field}: required string")
-    for field, allowed in ENUMS.items():
+    for field, allowed in ALLOWED.items():
         if isinstance(t.get(field), str) and t[field].lower() not in allowed:
             errors.append(f"tickets[{i}].{field}: must be one of {sorted(allowed)}")
     for field in ("prior_tickets_30d", "attachments"):

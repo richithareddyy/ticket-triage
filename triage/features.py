@@ -17,15 +17,11 @@ NUMERIC_FEATURES = ["text_len", "word_count", "exclamation_count", "question_cou
 FEATURE_COLUMNS = [TEXT_FEATURE] + CATEGORICAL_FEATURES + NUMERIC_FEATURES
 
 
-def validate(df):
+def build_features(df):
     missing = [c for c in RAW_COLUMNS if c not in df.columns]
     if missing:
         raise ValueError(f"missing fields: {', '.join(missing)}")
 
-
-def build_features(df):
-    """Raw ticket rows -> model-ready feature frame (one row per ticket)."""
-    validate(df)
     text = df["subject"].fillna("").astype(str) + " " + df["description"].fillna("").astype(str)
     lower = text.str.lower()
     created = pd.to_datetime(df["created_at"])

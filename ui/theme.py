@@ -1,18 +1,9 @@
-"""Visual system for the triage UI.
+"""Colors, CSS and small HTML builders for the Streamlit UI.
 
-Base colors live in `.streamlit/config.toml` ([theme]) and are read here, so
-Streamlit widgets, Altair charts and the few custom HTML elements share one
-source of truth.
-
-    Type      Source Sans for UI; Source Code Pro only for data (terms, values).
-              Scale 12 / 13 / 14 / 16 / 20 / 26 / 36 px. Sentence case everywhere.
-    Spacing   4 px base: 4, 8, 12, 16, 24, 32, 48.
-    Radius    4 px on inputs, buttons and the prediction panel; nothing else rounds.
-    Surfaces  paper page (#FAFAF7); white inputs = editable;
-              tinted panel (#F3F2EC) = model output. One level only, no nesting.
-    Lines     1 px rules (#D9D7CF) separate sections instead of boxes.
-    Color     one accent (teal) for actions, focus, links and "lowers";
-              priority colors appear only on the prediction itself.
+Base colors come from `.streamlit/config.toml` so widgets, Altair charts and the
+custom HTML stay in sync. Conventions: white inputs are editable, the tinted
+panel is model output, sections are separated by 1px rules rather than boxes,
+and priority colors are only used on the prediction itself.
 """
 from html import escape
 
@@ -20,10 +11,7 @@ import streamlit as st
 
 
 def _opt(name, fallback):
-    try:
-        return st.get_option(f"theme.{name}") or fallback
-    except Exception:
-        return fallback
+    return st.get_option(f"theme.{name}") or fallback
 
 
 ACCENT = _opt("primaryColor", "#0E6B6B")
@@ -34,7 +22,8 @@ MUTED = _opt("grayColor", "#62666D")
 PANEL = "#F3F2EC"
 TRACK = "#E6E4DC"
 
-# Ordinal priority scale; each color meets 4.5:1 contrast on paper and panel.
+# Ordinal priority scale. All four meet 4.5:1 contrast on the page background
+# (about 4.4:1 on the tinted panel, where the priority itself is large text).
 PRIORITY = {"Low": "#3F7D58", "Medium": "#8A6D10", "High": "#B4561F", "Critical": "#B3261E"}
 OK, WARN = "#3F7D58", "#B4561F"
 # SHAP direction: warm raises the prediction, accent lowers it.
@@ -137,14 +126,13 @@ def priority_block(priority, note=""):
 
 
 def split(probabilities):
-    """Stacked Low→Critical bar in plain HTML (no chart chrome needed for four numbers)."""
+    """Low→Critical stacked bar. Plain HTML; a chart is overkill for four numbers."""
     order = list(PRIORITY)
     segs = "".join(f'<span style="width:{probabilities[p] * 100:.2f}%;background:{PRIORITY[p]}" '
                    f'title="{p} {probabilities[p]:.1%}"></span>' for p in order)
     legend = "".join(f'<span><b style="color:{PRIORITY[p]}">{p}</b> {probabilities[p]:.0%}</span>' for p in order)
-    return (f'<div class="tt-bar" role="img" aria-label="Priority probabilities: '
-            + ", ".join(f"{p} {probabilities[p]:.0%}" for p in order)
-            + f'">{segs}</div><div class="tt-split">{legend}</div>')
+    aria = "Priority probabilities: " + ", ".join(f"{p} {probabilities[p]:.0%}" for p in order)
+    return f'<div class="tt-bar" role="img" aria-label="{aria}">{segs}</div><div class="tt-split">{legend}</div>'
 
 
 def stats(items):

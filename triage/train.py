@@ -60,17 +60,38 @@ def reg_metrics(y_hours, pred_hours):
             "r2_log": round(r2_score(np.log1p(y_hours), np.log1p(pred_hours)), 4)}
 
 
-def compare(task, candidates, X, y, split, fit_target, predict, score, better, pipe_args):
+def fit(estimator, task, X, y):
+    # Resolution time is heavily right-skewed, so the regressors are trained on log1p(hours).
+    labels = PRIORITIES if task == "classification" else None
+    target = y if task == "classification" else np.log1p(y)
+    return make_pipeline(estimator, task, labels).fit(X, target)
+
+
+def predict(pipe, task, X):
+    return pipe.predict(X) if task == "classification" else np.expm1(pipe.predict(X)).clip(0.25)
+
+
+def score(task, y, pred):
+    return cls_metrics(y, pred) if task == "classification" else reg_metrics(y, pred)
+
+
+def compare(task, candidates, X, y, split):
+    """Fit each candidate on train, score on val and test, and pick the best non-baseline on val."""
     tr, va, te = split
     results = {}
     for name, est in candidates.items():
         t = time.time()
-        pipe = make_pipeline(est, *pipe_args).fit(X.iloc[tr], fit_target(y[tr]))
-        results[name] = {"val": score(y[va], predict(pipe, X.iloc[va])),
-                         "test": score(y[te], predict(pipe, X.iloc[te])),
+        pipe = fit(est, task, X.iloc[tr], y[tr])
+        results[name] = {"val": score(task, y[va], predict(pipe, task, X.iloc[va])),
+                         "test": score(task, y[te], predict(pipe, task, X.iloc[te])),
                          "train_seconds": round(time.time() - t, 1)}
         print(f"  [{task}] {name:<20} val={results[name]['val']}  ({results[name]['train_seconds']}s)")
-    best = better(results)
+
+    models = [name for name in results if not name.startswith("baseline")]
+    if task == "classification":
+        best = max(models, key=lambda name: results[name]["val"]["macro_f1"])
+    else:
+        best = min(models, key=lambda name: results[name]["val"]["mae_hours"])
     print(f"  [{task}] best on validation: {best}")
     return best, results
 
@@ -107,27 +128,16 @@ def main():
     trva = np.concatenate([tr, va])
     print(f"train={len(tr):,} val={len(va):,} test={len(te):,}")
 
-    # --- Priority classification -------------------------------------------------
-    cls_cands = {"baseline_majority": DummyClassifier(strategy="most_frequent"), **classifiers()}
-    best_cls, cls_results = compare(
-        "priority", cls_cands, X, y_cls, split, fit_target=lambda y: y,
-        predict=lambda p, X_: p.predict(X_), score=cls_metrics,
-        better=lambda r: max((k for k in r if k != "baseline_majority"), key=lambda k: r[k]["val"]["macro_f1"]),
-        pipe_args=("classification", PRIORITIES))
-    cls_pipe = make_pipeline(classifiers()[best_cls], "classification", PRIORITIES).fit(X.iloc[trva], y_cls[trva])
-    cls_pred = cls_pipe.predict(X.iloc[te])
+    cls_candidates = {"baseline_majority": DummyClassifier(strategy="most_frequent"), **classifiers()}
+    best_cls, cls_results = compare("classification", cls_candidates, X, y_cls, split)
+    cls_pipe = fit(classifiers()[best_cls], "classification", X.iloc[trva], y_cls[trva])
+    cls_pred = predict(cls_pipe, "classification", X.iloc[te])
 
-    # --- Resolution-time regression (trained on log1p hours: heavy right skew) -----
-    reg_cands = {"baseline_median": DummyRegressor(strategy="median"), **regressors()}
-    best_reg, reg_results = compare(
-        "resolution", reg_cands, X, y_reg, split, fit_target=np.log1p,
-        predict=lambda p, X_: np.expm1(p.predict(X_)).clip(0.25), score=reg_metrics,
-        better=lambda r: min((k for k in r if k != "baseline_median"), key=lambda k: r[k]["val"]["mae_hours"]),
-        pipe_args=("regression",))
-    reg_pipe = make_pipeline(regressors()[best_reg], "regression").fit(X.iloc[trva], np.log1p(y_reg[trva]))
-    reg_pred = np.expm1(reg_pipe.predict(X.iloc[te])).clip(0.25)
+    reg_candidates = {"baseline_median": DummyRegressor(strategy="median"), **regressors()}
+    best_reg, reg_results = compare("regression", reg_candidates, X, y_reg, split)
+    reg_pipe = fit(regressors()[best_reg], "regression", X.iloc[trva], y_reg[trva])
+    reg_pred = predict(reg_pipe, "regression", X.iloc[te])
 
-    # --- SHAP -------------------------------------------------------------------
     background = X.iloc[tr].sample(200, random_state=SEED)
     sample = X.iloc[te].sample(min(500, len(te)), random_state=SEED)
     t = time.time()
