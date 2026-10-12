@@ -12,6 +12,8 @@ The final model learns how those scores interact with tier, channel, timing etc.
 This keeps SHAP explanations readable at the top level, and the linear text
 model gives exact per-term attributions underneath.
 """
+from collections import defaultdict
+
 import numpy as np
 import shap
 from sklearn.base import BaseEstimator, TransformerMixin, clone
@@ -48,9 +50,6 @@ class TextScorer(BaseEstimator, TransformerMixin):
                  else Ridge(alpha=1.0))
         return Pipeline([("tfidf", vec), ("linear", model)])
 
-    def _output(self, pipe, text):
-        return pipe.predict_proba(text) if self.task == "classification" else pipe.predict(text)[:, None]
-
     def fit(self, X, y):
         self.pipe_ = self._pipe().fit(_text(X), y)
         return self
@@ -65,7 +64,8 @@ class TextScorer(BaseEstimator, TransformerMixin):
         return oof if oof.ndim == 2 else oof[:, None]
 
     def transform(self, X):
-        return self._output(self.pipe_, _text(X))
+        text = _text(X)
+        return self.pipe_.predict_proba(text) if self.task == "classification" else self.pipe_.predict(text)[:, None]
 
     def get_feature_names_out(self, input_features=None):
         if self.task == "classification":
@@ -73,7 +73,7 @@ class TextScorer(BaseEstimator, TransformerMixin):
         return np.array(["log_hours"])
 
     def term_contributions(self, text, output_index=0, k=5):
-        """Exact per-term contributions (tfidf * coef) to the text model's score for one ticket."""
+        """Per-term tfidf * coef contributions to the text model's score; exact because the model is linear."""
         vec, lin = self.pipe_.named_steps["tfidf"], self.pipe_.named_steps["linear"]
         row = vec.transform([text])
         coef = lin.coef_[output_index] if lin.coef_.ndim == 2 else lin.coef_
@@ -109,7 +109,6 @@ def classifiers():
 
 
 def regressors():
-    # Linear baseline for regression is Ridge (regularized linear regression).
     return {
         "ridge": Ridge(alpha=1.0),
         "random_forest": RandomForestRegressor(n_estimators=400, min_samples_leaf=5, max_features=0.5,
@@ -124,7 +123,6 @@ def make_pipeline(estimator, task, labels=None):
 
 
 def readable_names(prep):
-    """ColumnTransformer output names -> human-readable labels."""
     names = []
     for raw in prep.get_feature_names_out():
         block, name = raw.split("__", 1)
@@ -141,11 +139,10 @@ def readable_names(prep):
 class Explainer:
     """SHAP explanations for a fitted `prep -> model` pipeline.
 
-    Tree models use TreeExplainer (exact, fast); linear models use LinearExplainer
-    with a background sample. Values are in the model's raw output space:
-    log-odds (XGBoost / logistic) or probability (random forest) for priority,
-    log1p(hours) for resolution time. One-hot columns are summed back into their
-    source field, which keeps attributions exact (SHAP values are additive).
+    Values are in the model's raw output space: log-odds (XGBoost / logistic) or
+    probability (random forest) for priority, log1p(hours) for resolution time.
+    One-hot columns are summed back into their source field; SHAP values are
+    additive, so the grouped attributions stay exact.
     """
 
     def __init__(self, pipeline, background):
@@ -165,12 +162,12 @@ class Explainer:
     def shap_values(self, X):
         """(n, features) for regressors, (n, features, classes) for classifiers."""
         values = self.explainer.shap_values(self.prep.transform(X))
-        if isinstance(values, list):  # older SHAP returns one array per class
+        if isinstance(values, list):  # older SHAP versions return one array per class
             values = np.stack(values, axis=-1)
         return np.asarray(values)
 
     def _grouped(self, values, X):
-        """Yield (name, display value, column) with one-hot fields summed per row."""
+        """Yield (name, display value, shap column), one-hot fields summed."""
         Xt = self.prep.transform(X)
         for i in self.single_idx:
             name = self.names[i]
@@ -180,22 +177,21 @@ class Explainer:
             yield col, X[col].to_numpy(), values[:, idx].sum(axis=1)
 
     def top_contributions(self, X, class_index=None, k=6):
-        """Per-row top-k contributions by |SHAP|. `class_index`: explained class per row (classifiers)."""
+        """Top-k contributions per row by |SHAP|; `class_index` picks the explained class for classifiers."""
         values = self.shap_values(X)
         if values.ndim == 3:
             values = values[np.arange(len(values)), :, class_index]
         groups = list(self._grouped(values, X))
         out = []
         for r in range(len(X)):
-            items = sorted(groups, key=lambda g: -abs(g[2][r]))[:k]
-            out.append([{"feature": name if name.startswith("text") else
-                         (f"{name} = {shown[r]}" if name in self.cat_idx else name),
-                         "value": "" if name in self.cat_idx else _fmt(shown[r]), "shap": round(float(v[r]), 4)} for name, shown, v in items])
+            row = []
+            for name, shown, v in sorted(groups, key=lambda g: -abs(g[2][r]))[:k]:
+                categorical = name in self.cat_idx
+                row.append({"feature": f"{name} = {shown[r]}" if categorical else name,
+                            "value": "" if categorical else _fmt(shown[r]),
+                            "shap": round(float(v[r]), 4)})
+            out.append(row)
         return out
-
-    def key_terms(self, text, output_index=0, k=5):
-        """Words driving the text signal (exact linear attributions)."""
-        return self.text_scorer.term_contributions(text, output_index, k)
 
     def global_importance(self, X, k=20):
         """Mean |SHAP| over a sample, averaged over classes for classifiers."""
@@ -203,13 +199,10 @@ class Explainer:
         if values.ndim == 2:
             values = values[:, :, None]
         n_cls = values.shape[2]
-        scored = []
+        totals = defaultdict(float)
         for c in range(n_cls):
             for name, _, v in self._grouped(values[:, :, c], X):
-                scored.append((name, float(np.abs(v).mean()) / n_cls))
-        totals = {}
-        for name, s in scored:
-            totals[name] = totals.get(name, 0.0) + s
+                totals[name] += float(np.abs(v).mean()) / n_cls
         top = sorted(totals.items(), key=lambda t: -t[1])[:k]
         return [{"feature": name, "mean_abs_shap": round(s, 5)} for name, s in top]
 

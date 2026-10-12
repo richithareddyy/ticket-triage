@@ -6,7 +6,7 @@ import pandas as pd
 from .features import build_features
 from .model import Explainer
 
-# Target first-resolution SLAs per priority (hours). Used to flag breach risk.
+# Resolution SLA per priority, in hours.
 SLA_HOURS = {"Critical": 4, "High": 24, "Medium": 72, "Low": 168}
 
 
@@ -28,12 +28,10 @@ class Predictor:
 
     def predict(self, tickets, explain=False, top_k=6):
         df = pd.DataFrame(tickets)
-        if "created_at" not in df:
-            df["created_at"] = pd.Timestamp.now(tz="UTC").tz_localize(None).isoformat()
-        df["created_at"] = df["created_at"].fillna(pd.Timestamp.now(tz="UTC").tz_localize(None).isoformat())
-        for col, default in (("prior_tickets_30d", 0), ("attachments", 0), ("category", "unknown")):
-            if col not in df:
-                df[col] = default
+        now = pd.Timestamp.now(tz="UTC").tz_localize(None).isoformat()
+        defaults = {"created_at": now, "prior_tickets_30d": 0, "attachments": 0, "category": "unknown"}
+        for col, default in defaults.items():
+            df[col] = df[col].fillna(default) if col in df else default
         X = build_features(df)
 
         proba = self.cls.predict_proba(X)
@@ -62,8 +60,8 @@ class Predictor:
                     "priority": pri_contrib[i],
                     "resolution_time": res_contrib[i],
                     # Words behind the "text signal" features, from the linear text models.
-                    "priority_key_terms": cls_exp.key_terms(texts[i], output_index=int(cls_idx[i])),
-                    "resolution_key_terms": reg_exp.key_terms(texts[i]),
+                    "priority_key_terms": cls_exp.text_scorer.term_contributions(texts[i], int(cls_idx[i])),
+                    "resolution_key_terms": reg_exp.text_scorer.term_contributions(texts[i]),
                 }
             results.append(r)
         return results
