@@ -1,10 +1,10 @@
 # Support Ticket Triage
 
-Predict a support ticket’s priority and resolution time, then inspect the inputs behind the prediction.
+Predicts a support ticket’s priority and resolution time, then shows the inputs behind the prediction so an agent can trust or override it.
 
-**Python · XGBoost · SHAP · Flask · Streamlit · PySpark · Docker**
+Python, XGBoost, SHAP, Flask, Streamlit, PySpark.
 
-I built this to connect a model-training workflow with a usable API and interface. A linear text model produces out-of-fold scores, which are combined with ticket metadata for the final estimator. SHAP explains the fitted model’s predictions.
+The first version fed 3,000 raw TF-IDF columns straight into XGBoost. Accuracy was fine, but the SHAP explanations were dominated by words being *absent* (“the word *would* isn’t in this ticket”), which tells an agent nothing. Now a linear text model compresses the text into a few dense scores, generated out of fold so the final model never sees predictions fit on its own labels, and XGBoost learns how those scores interact with ticket metadata. Accuracy stayed about the same and the explanations became readable.
 
 ## Results and scope
 
