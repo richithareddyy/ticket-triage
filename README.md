@@ -1,6 +1,6 @@
 # Support Ticket Triage
 
-Predicts a support ticket’s priority and resolution time, then shows the inputs behind the prediction so an agent can trust or override it.
+A support ticket arrives, and someone has to decide how urgent it is and how long it might take to resolve. This project predicts both from the ticket text and metadata, then shows which inputs pushed the predictions up or down. It is trained and evaluated on synthetic tickets, so the demo is a way to inspect the approach, not evidence that it works on a real support queue.
 
 Python, XGBoost, SHAP, Flask, Streamlit, PySpark.
 
