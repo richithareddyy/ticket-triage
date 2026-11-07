@@ -17,6 +17,21 @@ Training and evaluation use **20,000 synthetic tickets**, split into 14,000 trai
 
 These results describe the generated dataset, not performance on a real support queue. [Committed metrics](artifacts/metrics.json) contain the candidate comparisons and final results. SHAP shows how inputs influenced the model’s prediction; it does not show what caused a ticket to take longer.
 
+## Real-data check
+
+The results above are the easy case: the models are learning rules that were written into the data generator. To test the pipeline on real data, it was also run on **50,855 fixed bug reports** from the public Apache Jira tracker (Hive, Spark, Kafka, HBase, HDFS, YARN, Flink, Cassandra), training on the oldest 70% and testing on the newest 15%.
+
+| Test metric | Synthetic | Apache Jira | Jira baseline |
+| --- | --- | --- | --- |
+| Priority macro-F1 | 0.705 | 0.360 | 0.212 |
+| Priority accuracy | 68.8% | 65.6% | 73.5% |
+| Resolution MAE | 12.2 hours | 1,005 hours | 1,020 hours |
+| Resolution median error | 4.6 hours | 165 hours | 130 hours |
+
+Priority has a real but modest signal: macro-F1 beats the baseline because the model finds some of the rarer levels, while accuracy falls below always answering Medium, which covers 74% of the test set. Resolution time is not useful on this data. MAE barely moves and median error is worse than the baseline, so the opening text and details say little about how long an open-source bug stays open.
+
+These are bug reports rather than customer-support tickets. Jira has no customer tier or channel, so those fields are `unknown`. Only fixed bugs are included. Priorities, components, and attachment counts are their current values, which may have changed after a ticket was opened, so results may be optimistic. Random Forest beat XGBoost on validation here. The [Jira metrics](artifacts/jira/metrics.json) are committed; the hosted demo still uses the synthetic model. `make jira train-jira` reproduces the run.
+
 ## Run locally
 
 Requires Python 3.9+ and Docker. On macOS, XGBoost also needs `libomp`.

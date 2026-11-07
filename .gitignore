@@ -2,7 +2,9 @@
 __pycache__/
 .pytest_cache/
 nltk_data/
+artifacts/jira/model.joblib
 
 # Regenerate with `make data` / `make spark`
 data/
+artifacts/jira/model.joblib
 .DS_Store

@@ -1,0 +1,375 @@
+{
+  "data": {
+    "rows": 50855,
+    "train": 35598,
+    "val": 7628,
+    "test": 7629,
+    "split": "time"
+  },
+  "priority": {
+    "selected_model": "random_forest",
+    "comparison": {
+      "baseline_majority": {
+        "val": {
+          "accuracy": 0.6253,
+          "macro_f1": 0.1924,
+          "weighted_f1": 0.4812
+        },
+        "test": {
+          "accuracy": 0.7354,
+          "macro_f1": 0.2119,
+          "weighted_f1": 0.6232
+        },
+        "train_seconds": 30.3
+      },
+      "logistic_regression": {
+        "val": {
+          "accuracy": 0.3323,
+          "macro_f1": 0.3219,
+          "weighted_f1": 0.3421
+        },
+        "test": {
+          "accuracy": 0.2674,
+          "macro_f1": 0.2427,
+          "weighted_f1": 0.2938
+        },
+        "train_seconds": 31.1
+      },
+      "random_forest": {
+        "val": {
+          "accuracy": 0.5932,
+          "macro_f1": 0.3677,
+          "weighted_f1": 0.5549
+        },
+        "test": {
+          "accuracy": 0.6503,
+          "macro_f1": 0.3289,
+          "weighted_f1": 0.6291
+        },
+        "train_seconds": 42.4
+      },
+      "xgboost": {
+        "val": {
+          "accuracy": 0.6294,
+          "macro_f1": 0.3162,
+          "weighted_f1": 0.5453
+        },
+        "test": {
+          "accuracy": 0.7167,
+          "macro_f1": 0.2757,
+          "weighted_f1": 0.6416
+        },
+        "train_seconds": 32.5
+      }
+    },
+    "final_test": {
+      "accuracy": 0.6564,
+      "macro_f1": 0.3603,
+      "weighted_f1": 0.6425
+    },
+    "classification_report": {
+      "Low": {
+        "precision": 0.3181126331811263,
+        "recall": 0.21793534932221065,
+        "f1-score": 0.25866336633663367,
+        "support": 959.0
+      },
+      "Medium": {
+        "precision": 0.7669336002669336,
+        "recall": 0.8194295900178253,
+        "f1-score": 0.7923129955187866,
+        "support": 5610.0
+      },
+      "High": {
+        "precision": 0.20833333333333334,
+        "recall": 0.15463917525773196,
+        "f1-score": 0.17751479289940827,
+        "support": 485.0
+      },
+      "Critical": {
+        "precision": 0.20550161812297735,
+        "recall": 0.22086956521739132,
+        "f1-score": 0.2129086336965633,
+        "support": 575.0
+      },
+      "accuracy": 0.6564425219556954,
+      "macro avg": {
+        "precision": 0.37472029622609265,
+        "recall": 0.35321841995378983,
+        "f1-score": 0.36034994711284796,
+        "support": 7629.0
+      },
+      "weighted avg": {
+        "precision": 0.6326874570462153,
+        "recall": 0.6564425219556954,
+        "f1-score": 0.642476237004714,
+        "support": 7629.0
+      }
+    },
+    "confusion_matrix": {
+      "labels": [
+        "Low",
+        "Medium",
+        "High",
+        "Critical"
+      ],
+      "matrix": [
+        [
+          209,
+          704,
+          18,
+          28
+        ],
+        [
+          420,
+          4597,
+          214,
+          379
+        ],
+        [
+          15,
+          311,
+          75,
+          84
+        ],
+        [
+          13,
+          382,
+          53,
+          127
+        ]
+      ]
+    },
+    "shap_importance": [
+      {
+        "feature": "text signal: P(Low)",
+        "mean_abs_shap": 0.04591
+      },
+      {
+        "feature": "text signal: P(Critical)",
+        "mean_abs_shap": 0.03794
+      },
+      {
+        "feature": "text signal: P(High)",
+        "mean_abs_shap": 0.02351
+      },
+      {
+        "feature": "prior_tickets_30d",
+        "mean_abs_shap": 0.01964
+      },
+      {
+        "feature": "product",
+        "mean_abs_shap": 0.01922
+      },
+      {
+        "feature": "text signal: P(Medium)",
+        "mean_abs_shap": 0.01491
+      },
+      {
+        "feature": "text_len",
+        "mean_abs_shap": 0.01315
+      },
+      {
+        "feature": "word_count",
+        "mean_abs_shap": 0.01271
+      },
+      {
+        "feature": "upper_ratio",
+        "mean_abs_shap": 0.0114
+      },
+      {
+        "feature": "sentiment",
+        "mean_abs_shap": 0.01063
+      },
+      {
+        "feature": "hour",
+        "mean_abs_shap": 0.0087
+      },
+      {
+        "feature": "attachments",
+        "mean_abs_shap": 0.0069
+      },
+      {
+        "feature": "category",
+        "mean_abs_shap": 0.00663
+      },
+      {
+        "feature": "day_of_week",
+        "mean_abs_shap": 0.00486
+      },
+      {
+        "feature": "is_business_hours",
+        "mean_abs_shap": 0.0018
+      },
+      {
+        "feature": "has_error_code",
+        "mean_abs_shap": 0.00094
+      },
+      {
+        "feature": "exclamation_count",
+        "mean_abs_shap": 0.00088
+      },
+      {
+        "feature": "question_count",
+        "mean_abs_shap": 0.00087
+      },
+      {
+        "feature": "urgency_count",
+        "mean_abs_shap": 0.00078
+      },
+      {
+        "feature": "is_weekend",
+        "mean_abs_shap": 0.00044
+      }
+    ]
+  },
+  "resolution_time": {
+    "selected_model": "random_forest",
+    "comparison": {
+      "baseline_median": {
+        "val": {
+          "mae_hours": 1332.537,
+          "median_ae_hours": 127.165,
+          "rmse_hours": 4732.674,
+          "r2_log": -0.0025
+        },
+        "test": {
+          "mae_hours": 1019.543,
+          "median_ae_hours": 129.605,
+          "rmse_hours": 3234.275,
+          "r2_log": -0.0001
+        },
+        "train_seconds": 15.5
+      },
+      "ridge": {
+        "val": {
+          "mae_hours": 1338.211,
+          "median_ae_hours": 158.697,
+          "rmse_hours": 4691.314,
+          "r2_log": 0.0787
+        },
+        "test": {
+          "mae_hours": 1221.866,
+          "median_ae_hours": 146.684,
+          "rmse_hours": 17027.405,
+          "r2_log": 0.0943
+        },
+        "train_seconds": 15.6
+      },
+      "random_forest": {
+        "val": {
+          "mae_hours": 1328.8,
+          "median_ae_hours": 189.736,
+          "rmse_hours": 4668.984,
+          "r2_log": 0.0944
+        },
+        "test": {
+          "mae_hours": 1018.419,
+          "median_ae_hours": 193.903,
+          "rmse_hours": 3161.764,
+          "r2_log": 0.1168
+        },
+        "train_seconds": 26.8
+      },
+      "xgboost": {
+        "val": {
+          "mae_hours": 1335.668,
+          "median_ae_hours": 197.117,
+          "rmse_hours": 4666.263,
+          "r2_log": 0.0913
+        },
+        "test": {
+          "mae_hours": 1026.192,
+          "median_ae_hours": 191.602,
+          "rmse_hours": 3154.34,
+          "r2_log": 0.1221
+        },
+        "train_seconds": 17.3
+      }
+    },
+    "final_test": {
+      "mae_hours": 1005.055,
+      "median_ae_hours": 165.388,
+      "rmse_hours": 3173.446,
+      "r2_log": 0.1667
+    },
+    "shap_importance": [
+      {
+        "feature": "text signal: est. log hours",
+        "mean_abs_shap": 0.43942
+      },
+      {
+        "feature": "prior_tickets_30d",
+        "mean_abs_shap": 0.21406
+      },
+      {
+        "feature": "word_count",
+        "mean_abs_shap": 0.18886
+      },
+      {
+        "feature": "product",
+        "mean_abs_shap": 0.16127
+      },
+      {
+        "feature": "attachments",
+        "mean_abs_shap": 0.12754
+      },
+      {
+        "feature": "text_len",
+        "mean_abs_shap": 0.09118
+      },
+      {
+        "feature": "day_of_week",
+        "mean_abs_shap": 0.05177
+      },
+      {
+        "feature": "category",
+        "mean_abs_shap": 0.04883
+      },
+      {
+        "feature": "sentiment",
+        "mean_abs_shap": 0.04277
+      },
+      {
+        "feature": "upper_ratio",
+        "mean_abs_shap": 0.04033
+      },
+      {
+        "feature": "hour",
+        "mean_abs_shap": 0.02834
+      },
+      {
+        "feature": "is_business_hours",
+        "mean_abs_shap": 0.01588
+      },
+      {
+        "feature": "question_count",
+        "mean_abs_shap": 0.00807
+      },
+      {
+        "feature": "exclamation_count",
+        "mean_abs_shap": 0.00636
+      },
+      {
+        "feature": "has_error_code",
+        "mean_abs_shap": 0.00437
+      },
+      {
+        "feature": "is_weekend",
+        "mean_abs_shap": 0.00417
+      },
+      {
+        "feature": "urgency_count",
+        "mean_abs_shap": 0.00367
+      },
+      {
+        "feature": "channel",
+        "mean_abs_shap": 0.0
+      },
+      {
+        "feature": "customer_tier",
+        "mean_abs_shap": 0.0
+      }
+    ]
+  }
+}

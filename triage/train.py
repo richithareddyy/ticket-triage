@@ -2,6 +2,7 @@
 
     python -m triage.train --data data/tickets.csv
     python -m triage.train --data data/tickets.csv --features data/features.parquet   # Spark features
+    python -m triage.train --data data/jira_tickets.csv --split time --out artifacts/jira  # real data
 
 Each task trains Logistic Regression / Ridge, Random Forest and XGBoost on a
 train split, selects the best on validation (macro-F1 / MAE), refits the winner on
@@ -44,7 +45,19 @@ def load(data_path, features_path=None):
         print(f"built features with pandas in {time.time() - t:.1f}s")
     y_cls = raw["priority"].map({p: i for i, p in enumerate(PRIORITIES)}).to_numpy()
     y_reg = raw["resolution_hours"].to_numpy()
-    return X, y_cls, y_reg
+    return X, y_cls, y_reg, pd.to_datetime(raw["created_at"])
+
+
+def make_split(y_cls, created, how="random"):
+    """70/15/15 train/val/test indices. "time" tests on the newest tickets, as in deployment."""
+    idx = np.arange(len(y_cls))
+    if how == "time":
+        order = idx[np.argsort(created.to_numpy(), kind="stable")]
+        cut_val, cut_test = int(len(idx) * 0.7), int(len(idx) * 0.85)
+        return order[:cut_val], order[cut_val:cut_test], order[cut_test:]
+    tr, rest = train_test_split(idx, test_size=0.3, random_state=SEED, stratify=y_cls)
+    va, te = train_test_split(rest, test_size=0.5, random_state=SEED, stratify=y_cls[rest])
+    return tr, va, te
 
 
 def cls_metrics(y, pred):
@@ -117,14 +130,12 @@ def main():
     ap.add_argument("--data", default="data/tickets.csv")
     ap.add_argument("--features", default=None, help="optional Spark-built features parquet")
     ap.add_argument("--out", default="artifacts")
+    ap.add_argument("--split", choices=["random", "time"], default="random")
     args = ap.parse_args()
     os.makedirs(args.out, exist_ok=True)
 
-    X, y_cls, y_reg = load(args.data, args.features)
-    idx = np.arange(len(X))
-    tr, rest = train_test_split(idx, test_size=0.3, random_state=SEED, stratify=y_cls)
-    va, te = train_test_split(rest, test_size=0.5, random_state=SEED, stratify=y_cls[rest])
-    split = (tr, va, te)
+    X, y_cls, y_reg, created = load(args.data, args.features)
+    split = tr, va, te = make_split(y_cls, created, args.split)
     trva = np.concatenate([tr, va])
     print(f"train={len(tr):,} val={len(va):,} test={len(te):,}")
 
@@ -149,7 +160,7 @@ def main():
                          f"{args.out}/shap_resolution.png")
 
     metrics = {
-        "data": {"rows": len(X), "train": len(tr), "val": len(va), "test": len(te)},
+        "data": {"rows": len(X), "train": len(tr), "val": len(va), "test": len(te), "split": args.split},
         "priority": {
             "selected_model": best_cls, "comparison": cls_results,
             "final_test": cls_metrics(y_cls[te], cls_pred),
