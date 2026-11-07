@@ -57,3 +57,11 @@ def test_model_tab_renders_metrics(app):
     assert "Synthetic test set" in text and "Models compared" in text and "Confusion matrix" in text
     assert "Priority macro-F1" in text
     assert "real Apache Jira bug reports" in text and "0.360" in text
+
+
+def test_new_sample_keeps_last_result_faded(app):
+    app.button[0].click().run()
+    app.selectbox[0].set_value("Feature request").run()
+    text = markdown_text(app)
+    assert "Last result. Press Triage to score this ticket." in text
+    assert "What the model noted" in text and "tt-stale" in text

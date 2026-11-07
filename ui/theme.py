@@ -123,7 +123,6 @@ CSS = f"""
 .tt-tk:nth-child(2) {{ animation-delay: .33s; }}
 .tt-tk:nth-child(3) {{ animation-delay: .41s; }}
 .tt-tk:nth-child(4) {{ animation-delay: .49s; }}
-[data-baseweb="tab-panel"] {{ animation: tt-fade .3s var(--ease); }}
 [data-stale="true"], [data-stale="true"] * {{ opacity: 1 !important; transition: none !important; }}
 button, input, textarea, [data-baseweb="select"] > div, [data-baseweb="tab"], a {{
   transition: background-color .2s var(--ease), border-color .2s var(--ease), box-shadow .2s var(--ease), color .2s var(--ease); }}
@@ -179,6 +178,9 @@ button, input, textarea, [data-baseweb="select"] > div, [data-baseweb="tab"], a 
   text-transform: uppercase; background: transparent; transform: rotate(var(--t)); }}
 .tt-chip small {{ font-family: {MONO}; font-weight: 500; font-size: .72rem; margin-left: .3rem; text-transform: none; }}
 
+.tt-quiet, .tt-quiet * {{ animation: none !important; }}
+.tt-stale {{ opacity: .45; filter: grayscale(.5); transition: opacity .3s var(--ease); }}
+.tt-stalenote {{ color: {MUTED}; font-size: .85rem; font-style: italic; text-align: center; margin: 0 0 .5rem; }}
 .tt-empty {{ color: {MUTED}; font-size: .9rem; padding: .3rem 0; }}
 .tt-h3 {{ font-size: .95rem; font-weight: 650; color: {INK}; margin: .6rem 0 .1rem; }}
 .tt-muted {{ color: {MUTED}; font-size: .875rem; }}

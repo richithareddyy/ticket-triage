@@ -180,6 +180,22 @@ try:
 except ApiError:
     evaluation = None
 
+FORM_FIELDS = ("subject", "description", "customer_tier", "channel", "product", "category",
+               "prior_tickets_30d", "attachments")
+
+
+def load_sample():
+    # Fields keep stable keys and get new values in place. Without keys, a new sample changes every
+    # widget's default, Streamlit rebuilds the whole form, and the page jumps.
+    for field in FORM_FIELDS:
+        st.session_state[f"f_{field}"] = EXAMPLES[st.session_state.sample][field]
+    st.session_state.result_fresh = False
+
+
+if "f_subject" not in st.session_state:
+    st.session_state.sample = list(EXAMPLES)[0]
+    load_sample()
+
 if "incident" not in st.session_state:
     st.session_state.incident = f"INC{random.randint(1, 9999999):07d}"
 
@@ -191,62 +207,67 @@ tab_incident, tab_eval = st.tabs(["Incident", "Model evaluation"])
 with tab_incident:
     crumb, pick = st.columns([3, 1], vertical_alignment="center")
     crumb.markdown('<div class="tt-crumb">Incidents / New record</div>', unsafe_allow_html=True)
-    sample = pick.selectbox("Sample ticket", list(EXAMPLES), format_func=lambda k: f"Sample: {k}",
-                            label_visibility="collapsed")
-    ex = EXAMPLES[sample]
+    pick.selectbox("Sample ticket", list(EXAMPLES), format_func=lambda k: f"Sample: {k}",
+                   label_visibility="collapsed", key="sample", on_change=load_sample)
 
     with st.form("ticket", border=False):
         main, stub = st.columns([3, 2], gap="large")
         with main:
             head_slot = st.empty()
-            subject = st.text_input("Short description", ex["subject"], max_chars=200)
-            description = st.text_area("Description", ex["description"], height=76, max_chars=2000)
+            subject = st.text_input("Short description", max_chars=200, key="f_subject")
+            description = st.text_area("Description", height=76, max_chars=2000, key="f_description")
             theme.section("Context")
             c1, c2, c3 = st.columns(3)
-            tier = c1.selectbox("Customer tier", TIERS, index=TIERS.index(ex["customer_tier"]), format_func=label)
-            channel = c2.selectbox("Channel", CHANNELS, index=CHANNELS.index(ex["channel"]), format_func=label)
-            product = c3.selectbox("Product", PRODUCTS, index=PRODUCTS.index(ex["product"]))
+            tier = c1.selectbox("Customer tier", TIERS, format_func=label, key="f_customer_tier")
+            channel = c2.selectbox("Channel", CHANNELS, format_func=label, key="f_channel")
+            product = c3.selectbox("Product", PRODUCTS, key="f_product")
             c1, c2, c3 = st.columns(3)
-            category = c1.selectbox("Category", CATEGORIES, index=CATEGORIES.index(ex["category"]), format_func=label)
+            category = c1.selectbox("Category", CATEGORIES, format_func=label, key="f_category")
             date = c2.date_input("Opened", dt.date.today())
             time = c3.time_input("Time", dt.time(10, 30))
             c1, c2, _ = st.columns(3)
-            prior = c1.number_input("Tickets, last 30 days", 0, 100, ex["prior_tickets_30d"])
-            attachments = c2.number_input("Attachments", 0, 50, ex["attachments"])
+            prior = c1.number_input("Tickets, last 30 days", 0, 100, key="f_prior_tickets_30d")
+            attachments = c2.number_input("Attachments", 0, 50, key="f_attachments")
             submitted = st.form_submit_button("Triage", type="primary", width="stretch")
         with stub:
             theme.html('<div class="tt-stub"></div>')
             theme.section("Assessment")
             assessment_slot = st.empty()
 
-    res = None
     if submitted:
         ticket = dict(subject=subject, description=description, channel=channel, customer_tier=tier,
                       product=product, category=category, prior_tickets_30d=int(prior),
                       attachments=int(attachments), created_at=dt.datetime.combine(date, time).isoformat())
+        st.session_state.result_fresh = False
         if not (subject.strip() or description.strip()):
             st.warning("Add a short description or description first.")
         else:
             try:
                 status, body = call("POST", "/predict", params={"explain": "true"}, json=ticket)
                 if status == 200:
-                    res = body
+                    st.session_state.update(result=body, result_fresh=True,
+                                            result_time=dt.datetime.now().strftime("%H:%M"))
                 else:
                     details = body.get("details") or [body.get("error", f"HTTP {status}")]
                     st.error("Couldn't triage this ticket:\n" + "\n".join(f"- {d}" for d in details))
             except ApiError as e:
                 st.error(f"The prediction request failed. {e}")
 
-    state = "Triaged" if res else "New"
+    # The last result stays on screen, faded, until the next triage. Removing it would shrink the page
+    # and shift everything below; the faded copy also skips the entrance animations.
+    res = st.session_state.get("result")
+    fresh = st.session_state.get("result_fresh", False)
+    wrap = "tt-landed" if fresh else "tt-quiet tt-stale"
+    stale_note = "" if fresh else '<div class="tt-stalenote">Last result. Press Triage to score this ticket.</div>'
     head_slot.markdown(f'<div class="tt-head"><span class="k">Incident</span><span class="n">'
-                       f'{st.session_state.incident}</span><span class="tt-state{" done" if res else ""}">'
-                       f'{state}</span></div>', unsafe_allow_html=True)
+                       f'{st.session_state.incident}</span><span class="tt-state{" done" if fresh else ""}">'
+                       f'{"Triaged" if fresh else "New"}</span></div>', unsafe_allow_html=True)
 
     if res:
         priority, breach = res["priority"], res["sla_breach_risk"]
         hours, target = res["resolution_hours"], res["sla_target_hours"]
         assessment_slot.markdown(
-            '<div class="tt-landed">' + theme.verdict(priority, f"{res['confidence']:.0%} confidence")
+            stale_note + f'<div class="{wrap}">' + theme.verdict(priority, f"{res['confidence']:.0%} confidence")
             + theme.split(res["priority_probabilities"]) + '<div style="height:.75rem"></div>'
             + theme.field("Expected resolution", format_hours(hours))
             + theme.field("SLA", f"{target} h target, {'at risk' if breach else 'on track'}",
@@ -260,7 +281,7 @@ with tab_incident:
 
     if res:
         exp = res["explanation"]
-        now = dt.datetime.now().strftime("%H:%M")
+        now = st.session_state.result_time
         # A low score for some other priority is real signal, but reads oddly as a reason.
         other_levels = tuple(f"text signal: P({p})" for p in theme.PRIORITY if p != priority)
         drivers = [feature_label(c["feature"], c["value"]) for c in exp["priority"]
@@ -273,6 +294,7 @@ with tab_incident:
         theme.html(
             '<div class="tt-trailhead">The paper trail</div>'
             '<div class="tt-trailsub">What the model noted, and what pushed each result up or down.</div>'
+            + stale_note + f'<div class="{wrap}">'
             + theme.trail([
                 theme.note("Triage model", now, f"Priority set to {theme.PRIORITY_CODE[priority]} "
                            f"({res['confidence']:.0%} confidence). Expected resolution {format_hours(hours)} "
@@ -288,7 +310,7 @@ with tab_incident:
                              exp["resolution_key_terms"], "slower", "faster")
             + "</div>"
             + '<div class="tt-muted" style="margin-top:.7rem;text-align:center">SHAP contributions: log-odds for priority, '
-            f'log-hours for resolution time. Scored in {res["latency_ms"]:.0f} ms.</div>')
+            f'log-hours for resolution time. Scored in {res["latency_ms"]:.0f} ms.</div></div>')
     else:
         theme.html('<div class="tt-empty" style="margin-top:1rem">No activity yet. Run triage to add a work note.</div>')
 
