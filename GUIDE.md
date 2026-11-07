@@ -4,7 +4,7 @@ Predict support-ticket priority and resolution time from ticket text and metadat
 
 **Python · XGBoost · SHAP · Flask · Streamlit · PySpark · Docker**
 
-[Live demo](https://richithareddyy-ticket-triage-demostreamlit-app-3uubea.streamlit.app) · [Quick start](#quick-start) · [Results](#results) · [API](#api) · [Tests](#tests)
+[Live demo](https://tickettriage.streamlit.app) · [Quick start](#quick-start) · [Results](#results) · [API](#api) · [Tests](#tests)
 
 ## What it does
 
