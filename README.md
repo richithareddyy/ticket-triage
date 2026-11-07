@@ -43,7 +43,7 @@ make train
 make up
 ```
 
-Open http://localhost:8501; the Flask API runs on port 5050. [Try the hosted demo](https://tickettriage.streamlit.app).
+Open http://localhost:8501; the Flask API runs on port 5050. [Try the hosted demo](https://richithareddyy-ticket-triage.streamlit.app).
 
 ## API and checks
 
