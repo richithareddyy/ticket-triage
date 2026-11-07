@@ -19,6 +19,7 @@ COPY triage/ triage/
 RUN python -c "from triage.text import ensure_nltk; ensure_nltk()"
 COPY api/ api/
 COPY artifacts/model.joblib artifacts/metrics.json artifacts/
+COPY artifacts/jira/metrics.json artifacts/jira/
 RUN useradd --create-home appuser && chown -R appuser /app
 USER appuser
 EXPOSE 5000

@@ -58,6 +58,18 @@ def validate_ticket(t, i):
     return errors
 
 
+def real_data_summary():
+    path = os.path.join(os.path.dirname(METRICS_PATH), "jira", "metrics.json")
+    if not os.path.exists(path):
+        return None
+    with open(path) as f:
+        m = json.load(f)
+    p, r = m["priority"], m["resolution_time"]
+    return {"rows": m["data"]["rows"],
+            "priority": p["final_test"], "priority_baseline": p["comparison"]["baseline_majority"]["test"],
+            "resolution": r["final_test"], "resolution_baseline": r["comparison"]["baseline_median"]["test"]}
+
+
 def create_app(predictor=None):
     app = Flask(__name__)
     app.json.sort_keys = False
@@ -79,7 +91,8 @@ def create_app(predictor=None):
             m = json.load(f)
         keep = ("selected_model", "final_test", "comparison", "shap_importance")
         return jsonify(priority={k: m["priority"][k] for k in keep + ("confusion_matrix",)},
-                       resolution_time={k: m["resolution_time"][k] for k in keep})
+                       resolution_time={k: m["resolution_time"][k] for k in keep},
+                       real_data=real_data_summary())
 
     @app.post("/predict")
     def predict():

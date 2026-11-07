@@ -10,8 +10,8 @@ single-process demo runs.
 import datetime as dt
 import math
 import os
+import random
 import sys
-from html import escape
 
 import altair as alt
 import pandas as pd
@@ -125,21 +125,6 @@ def feature_label(name, value=""):
     return f"{pretty} ({value})" if value != "" else pretty
 
 
-def contributions_chart(items, positive_label, negative_label):
-    df = pd.DataFrame(items)
-    df["label"] = df.apply(lambda r: feature_label(r["feature"], r["value"]), axis=1)
-    df["direction"] = df["shap"].map(lambda v: positive_label if v > 0 else negative_label)
-    chart = alt.Chart(df).mark_bar(height=12).encode(
-        x=alt.X("shap:Q", title="SHAP contribution"),
-        y=alt.Y("label:N", sort=df.sort_values("shap", key=abs, ascending=False)["label"].tolist(), title=None),
-        color=alt.Color("direction:N", title=None,
-                        scale=alt.Scale(domain=[positive_label, negative_label], range=[theme.UP, theme.DOWN])),
-        tooltip=[alt.Tooltip("feature", title="Feature"), alt.Tooltip("value", title="Value"),
-                 alt.Tooltip("shap:Q", title="SHAP", format="+.3f")],
-    ).properties(height=alt.Step(26))
-    st.altair_chart(theme.style_chart(chart), use_container_width=True)
-
-
 def importance_chart(items):
     df = pd.DataFrame(items)
     df["feature"] = df["feature"].map(feature_label)
@@ -161,8 +146,8 @@ def confusion_chart(labels, matrix):
         x=alt.X("pred:N", sort=labels, title="Predicted", axis=alt.Axis(labelAngle=0, orient="top")),
         y=alt.Y("true:N", sort=labels, title="Actual"),
     )
-    heat = base.mark_rect(stroke=theme.PAPER, strokeWidth=2).encode(
-        color=alt.Color("share:Q", legend=None, scale=alt.Scale(range=[theme.PANEL, theme.ACCENT], domain=[0, 1])),
+    heat = base.mark_rect(stroke=theme.PAGE, strokeWidth=2).encode(
+        color=alt.Color("share:Q", legend=None, scale=alt.Scale(range=[theme.READONLY, theme.ACCENT], domain=[0, 1])),
         tooltip=[alt.Tooltip("true", title="Actual"), alt.Tooltip("pred", title="Predicted"),
                  alt.Tooltip("count:Q", title="Tickets"), alt.Tooltip("share:Q", title="Share of row", format=".0%")],
     )
@@ -182,166 +167,195 @@ def comparison_table(block, columns, fmt):
     st.dataframe(pd.DataFrame(rows).set_index("Model").style.format(fmt), width="stretch")
 
 
-def key_terms(terms):
-    if not terms:
-        return
-    words = "".join(
-        f'<span style="color:{theme.UP if t["weight"] > 0 else theme.DOWN}">{escape(t["term"])} '
-        f'{t["weight"]:+.2f}</span>' for t in terms)
-    theme.html(f'<div class="tt-small" style="margin-top:.25rem">Words behind the text signal</div>'
-               f'<div class="tt-terms">{words}</div>')
-
+theme.html(theme.hero())
 
 try:
     health = get("/health")
 except ApiError as e:
-    theme.html('<div class="tt-title">Ticket Triage</div>')
     st.error(f"Can't reach the prediction API at `{API_URL}`. {e}")
     st.stop()
 
-models, metrics = health["models"], health.get("metrics", {})
-head_l, head_r = st.columns([3, 2], vertical_alignment="bottom")
-head_l.markdown('<div class="tt-title">Ticket Triage</div>'
-                '<div class="tt-sub">Priority and time-to-resolution for incoming support tickets, '
-                'with the reasons behind each call.</div>', unsafe_allow_html=True)
-f1 = metrics.get("priority", {}).get("macro_f1")
-head_r.markdown(
-    f'<div class="tt-meta"><span class="dot">●</span> {label(models["priority"])} models '
-    f'{"via API" if API_URL else "loaded"}<br>trained {health["trained_at"][:10]}'
-    + (f' · test macro-F1 {f1:.3f}' if f1 else "") + "</div>", unsafe_allow_html=True)
+try:
+    evaluation = get("/model")
+except ApiError:
+    evaluation = None
 
-tab_triage, tab_eval = st.tabs(["Triage", "Model evaluation"])
+if "incident" not in st.session_state:
+    st.session_state.incident = f"INC{random.randint(1, 9999999):07d}"
 
-with tab_triage:
-    work, side = st.columns([7, 5], gap="large")
+theme.html('<div id="open-a-ticket" class="tt-title">Open a ticket.<br><em>See where it lands.</em></div>'
+           '<div class="tt-sub">Models are trained on synthetic tickets; real-data results are below.</div>')
 
-    with work:
-        h, pick = st.columns([3, 2], vertical_alignment="bottom")
-        h.markdown('<div class="tt-section">Ticket</div>', unsafe_allow_html=True)
-        sample = pick.selectbox("Sample ticket", list(EXAMPLES), format_func=lambda k: f"Sample: {k}",
-                                label_visibility="collapsed")
-        ex = EXAMPLES[sample]
+tab_incident, tab_eval = st.tabs(["Incident", "Model evaluation"])
 
-        with st.form("ticket", border=False):
-            subject = st.text_input("Subject", ex["subject"], max_chars=200)
-            description = st.text_area("Description", ex["description"], height=108, max_chars=2000)
+with tab_incident:
+    crumb, pick = st.columns([3, 1], vertical_alignment="center")
+    crumb.markdown('<div class="tt-crumb">Incidents / New record</div>', unsafe_allow_html=True)
+    sample = pick.selectbox("Sample ticket", list(EXAMPLES), format_func=lambda k: f"Sample: {k}",
+                            label_visibility="collapsed")
+    ex = EXAMPLES[sample]
 
-            theme.html('<div class="tt-section context">Context</div>')
+    with st.form("ticket", border=False):
+        main, stub = st.columns([3, 2], gap="large")
+        with main:
+            head_slot = st.empty()
+            subject = st.text_input("Short description", ex["subject"], max_chars=200)
+            description = st.text_area("Description", ex["description"], height=76, max_chars=2000)
+            theme.section("Context")
             c1, c2, c3 = st.columns(3)
-            channel = c1.selectbox("Channel", CHANNELS, index=CHANNELS.index(ex["channel"]), format_func=label)
-            tier = c2.selectbox("Customer tier", TIERS, index=TIERS.index(ex["customer_tier"]), format_func=label)
+            tier = c1.selectbox("Customer tier", TIERS, index=TIERS.index(ex["customer_tier"]), format_func=label)
+            channel = c2.selectbox("Channel", CHANNELS, index=CHANNELS.index(ex["channel"]), format_func=label)
             product = c3.selectbox("Product", PRODUCTS, index=PRODUCTS.index(ex["product"]))
             c1, c2, c3 = st.columns(3)
-            category = c1.selectbox("Category (customer's pick)", CATEGORIES,
-                                    index=CATEGORIES.index(ex["category"]), format_func=label)
+            category = c1.selectbox("Category", CATEGORIES, index=CATEGORIES.index(ex["category"]), format_func=label)
             date = c2.date_input("Opened", dt.date.today())
             time = c3.time_input("Time", dt.time(10, 30))
             c1, c2, _ = st.columns(3)
             prior = c1.number_input("Tickets, last 30 days", 0, 100, ex["prior_tickets_30d"])
             attachments = c2.number_input("Attachments", 0, 50, ex["attachments"])
-            submitted = st.form_submit_button("Run triage", type="primary", width="stretch")
+            submitted = st.form_submit_button("Triage", type="primary", width="stretch")
+        with stub:
+            theme.html('<div class="tt-stub"></div>')
+            theme.section("Assessment")
+            assessment_slot = st.empty()
 
     res = None
-    with side:
-        with st.container(key="panel-prediction"):
-            theme.html('<div class="tt-small">Prediction</div>')
-            if submitted:
-                ticket = dict(subject=subject, description=description, channel=channel, customer_tier=tier,
-                              product=product, category=category, prior_tickets_30d=int(prior),
-                              attachments=int(attachments),
-                              created_at=dt.datetime.combine(date, time).isoformat())
-                if not (subject.strip() or description.strip()):
-                    st.warning("Add a subject or description first.")
+    if submitted:
+        ticket = dict(subject=subject, description=description, channel=channel, customer_tier=tier,
+                      product=product, category=category, prior_tickets_30d=int(prior),
+                      attachments=int(attachments), created_at=dt.datetime.combine(date, time).isoformat())
+        if not (subject.strip() or description.strip()):
+            st.warning("Add a short description or description first.")
+        else:
+            try:
+                status, body = call("POST", "/predict", params={"explain": "true"}, json=ticket)
+                if status == 200:
+                    res = body
                 else:
-                    try:
-                        with st.spinner("Scoring..."):
-                            status, body = call("POST", "/predict", params={"explain": "true"}, json=ticket)
-                        if status == 200:
-                            res = body
-                        else:
-                            details = body.get("details") or [body.get("error", f"HTTP {status}")]
-                            st.error("Couldn't score this ticket:\n" + "\n".join(f"- {d}" for d in details))
-                    except ApiError as e:
-                        st.error(f"The prediction request failed. {e}")
+                    details = body.get("details") or [body.get("error", f"HTTP {status}")]
+                    st.error("Couldn't triage this ticket:\n" + "\n".join(f"- {d}" for d in details))
+            except ApiError as e:
+                st.error(f"The prediction request failed. {e}")
 
-            if res:
-                breach = res["sla_breach_risk"]
-                sla = (f'{res["sla_target_hours"]} h target<small class="{"warn" if breach else "ok"}">'
-                       f'{"at risk" if breach else "on track"}</small>')
-                theme.html(
-                    theme.priority_block(res["priority"], f"{res['confidence']:.0%} confidence")
-                    + theme.split(res["priority_probabilities"])
-                    + '<div class="tt-rows">'
-                    + theme.row("Expected resolution", format_hours(res["resolution_hours"]))
-                    + theme.row("SLA", sla)
-                    + "</div>"
-                    + f'<div class="tt-muted" style="margin-top:.6rem">Scored in {res["latency_ms"]:.0f} ms</div>')
-            else:
-                theme.html(
-                    '<div class="tt-empty">Run triage to score this ticket.</div>'
-                    + '<div class="tt-rows">'
-                    + theme.row("Priority", "—", empty=True)
-                    + theme.row("Expected resolution", "—", empty=True)
-                    + theme.row("SLA", "—", empty=True)
-                    + "</div>")
+    state = "Triaged" if res else "New"
+    head_slot.markdown(f'<div class="tt-head"><span class="k">Incident</span><span class="n">'
+                       f'{st.session_state.incident}</span><span class="tt-state{" done" if res else ""}">'
+                       f'{state}</span></div>', unsafe_allow_html=True)
+
+    if res:
+        priority, breach = res["priority"], res["sla_breach_risk"]
+        hours, target = res["resolution_hours"], res["sla_target_hours"]
+        assessment_slot.markdown(
+            '<div class="tt-landed">' + theme.verdict(priority, f"{res['confidence']:.0%} confidence")
+            + theme.split(res["priority_probabilities"]) + '<div style="height:.75rem"></div>'
+            + theme.field("Expected resolution", format_hours(hours))
+            + theme.field("SLA", f"{target} h target, {'at risk' if breach else 'on track'}",
+                          theme.sla_meter(hours, target, breach))
+            + theme.slam(priority) + "</div>",
+            unsafe_allow_html=True)
+    else:
+        assessment_slot.markdown(
+            '<div class="tt-await">Awaiting triage</div>'
+            + theme.field("Expected resolution") + theme.field("SLA"), unsafe_allow_html=True)
 
     if res:
         exp = res["explanation"]
-        theme.html('<div class="tt-h">Why this prediction</div>'
-                   '<div class="tt-muted">SHAP contributions from the models. Priority is in log-odds, '
-                   'resolution time in log-hours.</div>')
-        left, right = st.columns(2, gap="large")
-        with left:
-            theme.html(f'<div class="tt-h3">Priority: {escape(res["priority"])}</div>')
-            contributions_chart(exp["priority"], "raises", "lowers")
-            key_terms(exp["priority_key_terms"])
-        with right:
-            theme.html(f'<div class="tt-h3">Resolution: {format_hours(res["resolution_hours"])}</div>')
-            contributions_chart(exp["resolution_time"], "slower", "faster")
-            key_terms(exp["resolution_key_terms"])
+        now = dt.datetime.now().strftime("%H:%M")
+        # A low score for some other priority is real signal, but reads oddly as a reason.
+        other_levels = tuple(f"text signal: P({p})" for p in theme.PRIORITY if p != priority)
+        drivers = [feature_label(c["feature"], c["value"]) for c in exp["priority"]
+                   if c["shap"] > 0 and c["feature"] not in other_levels][:3]
+        terms = [t["term"] for t in exp["priority_key_terms"] if t["weight"] > 0][:3]
+
+        def factors(items):
+            return [(feature_label(c["feature"], c["value"]), c["shap"]) for c in items]
+
+        theme.html(
+            '<div class="tt-trailhead">The paper trail</div>'
+            '<div class="tt-trailsub">What the model noted, and what pushed each result up or down.</div>'
+            + theme.trail([
+                theme.note("Triage model", now, f"Priority set to {theme.PRIORITY_CODE[priority]} "
+                           f"({res['confidence']:.0%} confidence). Expected resolution {format_hours(hours)} "
+                           f"against a {target} h SLA."),
+                theme.note("Triage model", now, "Main factors: " + "; ".join(drivers)
+                           + (f". Key terms: {', '.join(terms)}." if terms else ".")),
+            ])
+            + '<div class="tt-evis">'
+            + theme.evidence("Priority", theme.PRIORITY_CODE[priority], priority.upper(), theme.STAMP[priority],
+                             factors(exp["priority"]), exp["priority_key_terms"], "raises", "lowers")
+            + theme.evidence("Expected resolution", format_hours(hours), "AT RISK" if breach else "ON TRACK",
+                             theme.WARN if breach else theme.OK, factors(exp["resolution_time"]),
+                             exp["resolution_key_terms"], "slower", "faster")
+            + "</div>"
+            + '<div class="tt-muted" style="margin-top:.7rem;text-align:center">SHAP contributions: log-odds for priority, '
+            f'log-hours for resolution time. Scored in {res["latency_ms"]:.0f} ms.</div>')
+    else:
+        theme.html('<div class="tt-empty" style="margin-top:1rem">No activity yet. Run triage to add a work note.</div>')
 
 with tab_eval:
-    try:
-        m = get("/model")
-    except ApiError:
+    if evaluation is None:
         theme.html('<div class="tt-muted">Evaluation results aren\'t available from the API.</div>')
-        st.stop()
-    p, rt = m["priority"], m["resolution_time"]
-    pf, rf = p["final_test"], rt["final_test"]
-    base_f1 = p["comparison"].get("baseline_majority", {}).get("test", {}).get("macro_f1")
-    base_mae = rt["comparison"].get("baseline_median", {}).get("test", {}).get("mae_hours")
+    else:
+        p, rt = evaluation["priority"], evaluation["resolution_time"]
+        pf, rf = p["final_test"], rt["final_test"]
+        base_f1 = p["comparison"].get("baseline_majority", {}).get("test", {}).get("macro_f1")
+        base_mae = rt["comparison"].get("baseline_median", {}).get("test", {}).get("mae_hours")
 
-    theme.html('<div class="tt-muted" style="margin-top:.25rem">Held-out test set: tickets never seen during '
-               'training or model selection.</div>'
-               + theme.stats([
-                   ("Priority macro-F1", f"{pf['macro_f1']:.3f}", f"baseline {base_f1:.3f}" if base_f1 else ""),
-                   ("Priority accuracy", f"{pf['accuracy']:.1%}", ""),
-                   ("Resolution MAE", f"{rf['mae_hours']:.1f} h", f"baseline {base_mae:.1f} h" if base_mae else ""),
-                   ("Median error", f"{rf['median_ae_hours']:.1f} h", f"R² (log) {rf['r2_log']:.2f}"),
-               ]))
+        theme.section("Synthetic test set")
+        theme.html('<div class="tt-muted">Held-out tickets never seen during training or model selection. '
+                   f'Models: {label(health["models"]["priority"])}, trained {health["trained_at"][:10]}.</div>'
+                   + theme.stats([
+                       ("Priority macro-F1", f"{pf['macro_f1']:.3f}", f"baseline {base_f1:.3f}" if base_f1 else ""),
+                       ("Priority accuracy", f"{pf['accuracy']:.1%}", ""),
+                       ("Resolution MAE", f"{rf['mae_hours']:.1f} h", f"baseline {base_mae:.1f} h" if base_mae else ""),
+                       ("Median error", f"{rf['median_ae_hours']:.1f} h", f"R² (log) {rf['r2_log']:.2f}"),
+                   ]))
 
-    theme.html('<div class="tt-h">Models compared</div>'
-               '<div class="tt-muted">Validation scores. ✓ marks the model in use.</div>')
-    left, right = st.columns(2, gap="large")
-    with left:
-        theme.html('<div class="tt-h3">Priority</div>')
-        comparison_table(p, {"macro_f1": "Macro-F1", "accuracy": "Accuracy"},
-                         {"Macro-F1": "{:.3f}", "Accuracy": "{:.1%}"})
-    with right:
-        theme.html('<div class="tt-h3">Resolution time</div>')
-        comparison_table(rt, {"mae_hours": "MAE (h)", "median_ae_hours": "Median AE (h)"},
-                         {"MAE (h)": "{:.2f}", "Median AE (h)": "{:.2f}"})
+        real = evaluation.get("real_data")
+        if real:
+            theme.section("Real-data check: Apache Jira")
+            theme.html(f'<div class="tt-muted">{real["rows"]:,} real Apache Jira bug reports, tested on the newest '
+                       'tickets. These are open-source bugs, not support tickets, and resolution times here are '
+                       'no better than guessing the median.</div>'
+                       + theme.stats([
+                           ("Priority macro-F1", f"{real['priority']['macro_f1']:.3f}",
+                            f"baseline {real['priority_baseline']['macro_f1']:.3f}"),
+                           ("Priority accuracy", f"{real['priority']['accuracy']:.1%}",
+                            f"baseline {real['priority_baseline']['accuracy']:.1%}"),
+                           ("Resolution MAE", f"{real['resolution']['mae_hours']:,.0f} h",
+                            f"baseline {real['resolution_baseline']['mae_hours']:,.0f} h"),
+                           ("Median error", f"{real['resolution']['median_ae_hours']:.0f} h",
+                            f"baseline {real['resolution_baseline']['median_ae_hours']:.0f} h"),
+                       ]))
 
-    left, right = st.columns([5, 6], gap="large")
-    with left:
-        theme.html('<div class="tt-h">Where it goes wrong</div>'
-                   '<div class="tt-muted">Errors sit next to the diagonal.</div>')
-        confusion_chart(p["confusion_matrix"]["labels"], p["confusion_matrix"]["matrix"])
-    with right:
-        theme.html('<div class="tt-h">What drives predictions</div>'
-                   '<div class="tt-muted">Mean impact per feature on held-out tickets.</div>')
-        target = st.radio("Target", ["Priority", "Resolution time"], horizontal=True, label_visibility="collapsed")
-        importance_chart((p if target == "Priority" else rt)["shap_importance"][:10])
+        theme.section("Models compared")
+        theme.html('<div class="tt-muted">Validation scores. ✓ marks the model in use.</div>')
+        left, right = st.columns(2, gap="large")
+        with left:
+            theme.html('<div class="tt-h3">Priority</div>')
+            comparison_table(p, {"macro_f1": "Macro-F1", "accuracy": "Accuracy"},
+                             {"Macro-F1": "{:.3f}", "Accuracy": "{:.1%}"})
+        with right:
+            theme.html('<div class="tt-h3">Resolution time</div>')
+            comparison_table(rt, {"mae_hours": "MAE (h)", "median_ae_hours": "Median AE (h)"},
+                             {"MAE (h)": "{:.2f}", "Median AE (h)": "{:.2f}"})
 
-theme.html(f'<div class="tt-foot">Trained on synthetic tickets with a known structure; real support data is '
-           f'private. <a href="{REPO_URL}">Source</a></div>')
+        left, right = st.columns([5, 6], gap="large")
+        with left:
+            theme.section("Confusion matrix")
+            confusion_chart(p["confusion_matrix"]["labels"], p["confusion_matrix"]["matrix"])
+        with right:
+            theme.section("Feature importance")
+            target = st.radio("Target", ["Priority", "Resolution time"], horizontal=True,
+                              label_visibility="collapsed")
+            importance_chart((p if target == "Priority" else rt)["shap_importance"][:10])
+
+real = evaluation.get("real_data") if evaluation else None
+jira = ""
+if real:
+    jira = (f'<p>On {real["rows"]:,} real Apache Jira bug reports, priority macro-F1 falls to '
+            f'{real["priority"]["macro_f1"]:.2f} (baseline {real["priority_baseline"]["macro_f1"]:.2f}), and resolution '
+            'times are no better than guessing the median. Those are open-source bugs, not support tickets.</p>')
+theme.html(f"""<div class="tt-band"><h2>The honest numbers.<br><em>Not every ticket is this easy.</em></h2>
+<p>This demo's tickets are synthetic, so its scores aren't evidence of how it would do in a real queue.</p>{jira}
+<p>SHAP shows what influenced a prediction, not what caused a delay. <a href="{REPO_URL}">Source on GitHub</a></p></div>""")

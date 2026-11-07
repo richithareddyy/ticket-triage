@@ -23,19 +23,20 @@ def markdown_text(at):
     return " ".join(m.value for m in at.markdown)
 
 
-def test_renders_header_and_empty_state(app):
+def test_page_leads_from_the_tickets_into_the_form(app):
     assert not app.exception
     text = markdown_text(app)
-    assert "Ticket Triage" in text and "Run triage to score this ticket." in text
-    assert [t.label for t in app.tabs] == ["Triage", "Model evaluation"]
+    assert "Every ticket says it's urgent." in text and 'href="#open-a-ticket"' in text
+    assert 'id="open-a-ticket"' in text and "No activity yet." in text
+    assert [t.label for t in app.tabs] == ["Incident", "Model evaluation"]
 
 
 def test_run_triage_shows_verdict_and_explanations(app):
     app.button[0].click().run()
     assert not app.exception
     text = markdown_text(app)
-    assert "Priority: Critical" in text and "Why this prediction" in text and "Expected resolution" in text
-    assert "Run triage to score this ticket." not in text
+    assert "1 - Critical" in text and "What the model noted" in text and "Main factors" in text
+    assert "No activity yet." not in text
 
 
 def test_sample_ticket_fills_the_form(app):
@@ -47,11 +48,12 @@ def test_empty_ticket_shows_warning(app):
     app.text_input[0].set_value("")
     app.text_area[0].set_value("   ")
     app.button[0].click().run()
-    assert any("Add a subject or description" in w.value for w in app.warning)
-    assert "Why this prediction" not in markdown_text(app)
+    assert any("Add a short description" in w.value for w in app.warning)
+    assert "What the model noted" not in markdown_text(app)
 
 
 def test_model_tab_renders_metrics(app):
     text = markdown_text(app)
-    assert "Held-out test set" in text and "Models compared" in text and "Where it goes wrong" in text
+    assert "Synthetic test set" in text and "Models compared" in text and "Confusion matrix" in text
     assert "Priority macro-F1" in text
+    assert "real Apache Jira bug reports" in text and "0.360" in text

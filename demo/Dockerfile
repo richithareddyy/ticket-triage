@@ -13,6 +13,7 @@ COPY ui/ ui/
 COPY demo/streamlit_app.py demo/streamlit_app.py
 COPY .streamlit/ .streamlit/
 COPY artifacts/model.joblib artifacts/metrics.json artifacts/
+COPY artifacts/jira/metrics.json artifacts/jira/
 RUN useradd --create-home appuser && chown -R appuser /app
 USER appuser
 EXPOSE 10000
