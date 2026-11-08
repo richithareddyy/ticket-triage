@@ -32,7 +32,7 @@ def test_page_leads_from_the_tickets_into_the_form(app):
 
 
 def test_run_triage_shows_verdict_and_explanations(app):
-    app.button[0].click().run()
+    app.button(key="triage").click().run()
     assert not app.exception
     text = markdown_text(app)
     assert "1 - Critical" in text and "What the model noted" in text and "Main factors" in text
@@ -40,14 +40,14 @@ def test_run_triage_shows_verdict_and_explanations(app):
 
 
 def test_sample_ticket_fills_the_form(app):
-    app.selectbox[0].set_value("Feature request").run()
+    app.button(key="sample_2").click().run()
     assert app.text_input[0].value == "Would love dark mode"
 
 
 def test_empty_ticket_shows_warning(app):
     app.text_input[0].set_value("")
     app.text_area[0].set_value("   ")
-    app.button[0].click().run()
+    app.button(key="triage").click().run()
     assert any("Add a short description" in w.value for w in app.warning)
     assert "What the model noted" not in markdown_text(app)
 
@@ -60,8 +60,8 @@ def test_model_tab_renders_metrics(app):
 
 
 def test_new_sample_keeps_last_result_faded(app):
-    app.button[0].click().run()
-    app.selectbox[0].set_value("Feature request").run()
+    app.button(key="triage").click().run()
+    app.button(key="sample_2").click().run()
     text = markdown_text(app)
     assert "Last result. Press Triage to score this ticket." in text
     assert "What the model noted" in text and "tt-stale" in text

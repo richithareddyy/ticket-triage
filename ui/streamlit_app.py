@@ -192,6 +192,11 @@ def load_sample():
     st.session_state.result_fresh = False
 
 
+def pick_sample(name):
+    st.session_state.sample = name
+    load_sample()
+
+
 if "f_subject" not in st.session_state:
     st.session_state.sample = list(EXAMPLES)[0]
     load_sample()
@@ -205,10 +210,12 @@ theme.html('<div id="open-a-ticket" class="tt-title">Open a ticket.<br><em>See w
 tab_incident, tab_eval = st.tabs(["Incident", "Model evaluation"])
 
 with tab_incident:
-    crumb, pick = st.columns([3, 1], vertical_alignment="center")
-    crumb.markdown('<div class="tt-crumb">Incidents / New record</div>', unsafe_allow_html=True)
-    pick.selectbox("Sample ticket", list(EXAMPLES), format_func=lambda k: f"Sample: {k}",
-                   label_visibility="collapsed", key="sample", on_change=load_sample)
+    # Buttons rather than a dropdown: opening a dropdown nudged the page on some browsers.
+    with st.container(horizontal=True, vertical_alignment="center", gap="small", key="samples"):
+        theme.html('<div class="tt-crumb">Try a sample:</div>')
+        for i, name in enumerate(EXAMPLES):
+            st.button(name, key=f"sample_{i}", on_click=pick_sample, args=(name,),
+                      type="primary" if name == st.session_state.sample else "secondary")
 
     with st.form("ticket", border=False):
         main, stub = st.columns([3, 2], gap="large")
@@ -228,7 +235,7 @@ with tab_incident:
             c1, c2, _ = st.columns(3)
             prior = c1.number_input("Tickets, last 30 days", 0, 100, key="f_prior_tickets_30d")
             attachments = c2.number_input("Attachments", 0, 50, key="f_attachments")
-            submitted = st.form_submit_button("Triage", type="primary", width="stretch")
+            submitted = st.form_submit_button("Triage", type="primary", width="stretch", key="triage")
         with stub:
             theme.html('<div class="tt-stub"></div>')
             theme.section("Assessment")

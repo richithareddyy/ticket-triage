@@ -181,6 +181,8 @@ button, input, textarea, [data-baseweb="select"] > div, [data-baseweb="tab"], a 
 .tt-quiet, .tt-quiet * {{ animation: none !important; }}
 .tt-stale {{ opacity: .45; filter: grayscale(.5); transition: opacity .3s var(--ease); }}
 .tt-stalenote {{ color: {MUTED}; font-size: .85rem; font-style: italic; text-align: center; margin: 0 0 .5rem; }}
+.st-key-samples {{ margin-bottom: .4rem; }}
+.st-key-samples button {{ min-height: 2rem; padding: .2rem .8rem; font-size: .85rem; }}
 .tt-empty {{ color: {MUTED}; font-size: .9rem; padding: .3rem 0; }}
 .tt-h3 {{ font-size: .95rem; font-weight: 650; color: {INK}; margin: .6rem 0 .1rem; }}
 .tt-muted {{ color: {MUTED}; font-size: .875rem; }}
