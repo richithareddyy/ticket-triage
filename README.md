@@ -2,7 +2,21 @@
 
 A support ticket arrives. How urgent is it, and how long might it take to resolve? This project estimates both from the ticket text and details such as its channel and product, then shows which inputs influenced each prediction. The demo uses synthetic tickets.
 
+**[Live demo → richithareddyy-ticket-triage.streamlit.app](https://richithareddyy-ticket-triage.streamlit.app)**
+
 Python, XGBoost, SHAP, Flask, Streamlit, PySpark.
+
+[![Home page of the demo](docs/home.jpg)](https://richithareddyy-ticket-triage.streamlit.app)
+
+Pick a sample ticket or write your own, then press **Triage**. The ticket is stamped with a priority, an expected resolution time, and its SLA status:
+
+![A triaged ticket](docs/triage.jpg)
+
+The paper trail lists the main factors behind each prediction as SHAP contributions, plus the words that drove the text scores:
+
+![The paper trail with SHAP factors](docs/paper-trail.jpg)
+
+The hosted app may take up to a minute to wake if nobody has opened it recently.
 
 The first version represented text with 3,000 word features. Its SHAP explanations often pointed to missing words: “the word *would* isn’t in this ticket.” That wasn’t useful. Now a small text model turns the message into a few scores, which XGBoost combines with the other ticket details. During training, each score comes from a model that did not train on that ticket. This avoids leaking its answer into the features.
 
@@ -43,7 +57,7 @@ make train
 make up
 ```
 
-Open http://localhost:8501; the Flask API runs on port 5050. [Try the hosted demo](https://richithareddyy-ticket-triage.streamlit.app).
+Open http://localhost:8501; the Flask API runs on port 5050.
 
 ## API and checks
 
