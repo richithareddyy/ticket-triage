@@ -37,12 +37,17 @@ class TextScorer(BaseEstimator, TransformerMixin):
     `fit_transform` returns out-of-fold predictions so the downstream model never
     sees text scores that were fit on its own labels (prevents stacking leakage);
     `transform` uses the model refit on all training rows.
+
+    Shuffled folds suit an i.i.d. split. For a chronological evaluation the caller
+    computes forward-only scores (`triage.temporal.forward_text_scores`) and passes
+    them as `oof`, which `fit_transform` returns in place of the shuffled ones.
     """
 
-    def __init__(self, task="classification", labels=None, folds=5):
+    def __init__(self, task="classification", labels=None, folds=5, oof=None):
         self.task = task
         self.labels = labels
         self.folds = folds
+        self.oof = oof
 
     def _pipe(self):
         vec = TfidfVectorizer(ngram_range=(1, 2), min_df=3, max_features=5000, sublinear_tf=True)
@@ -55,6 +60,11 @@ class TextScorer(BaseEstimator, TransformerMixin):
         return self
 
     def fit_transform(self, X, y=None, **_):
+        if self.oof is not None:
+            if len(self.oof) != len(X):
+                raise ValueError("oof scores must align with the training rows")
+            self.fit(X, y)
+            return self.oof
         text = _text(X)
         cv = (StratifiedKFold(self.folds, shuffle=True, random_state=SEED) if self.task == "classification"
               else KFold(self.folds, shuffle=True, random_state=SEED))
@@ -88,9 +98,9 @@ def _text(X):
     return X[TEXT_FEATURE] if hasattr(X, "columns") else X
 
 
-def preprocessor(task, labels=None):
+def preprocessor(task, labels=None, oof=None):
     return ColumnTransformer([
-        ("text", TextScorer(task, labels), [TEXT_FEATURE]),
+        ("text", TextScorer(task, labels, oof=oof), [TEXT_FEATURE]),
         ("cat", OneHotEncoder(handle_unknown="ignore", sparse_output=False), CATEGORICAL_FEATURES),
         ("num", StandardScaler(), NUMERIC_FEATURES),
     ])
@@ -118,8 +128,8 @@ def regressors():
     }
 
 
-def make_pipeline(estimator, task, labels=None):
-    return Pipeline([("prep", preprocessor(task, labels)), ("model", estimator)])
+def make_pipeline(estimator, task, labels=None, oof=None):
+    return Pipeline([("prep", preprocessor(task, labels, oof)), ("model", estimator)])
 
 
 def readable_names(prep):

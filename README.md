@@ -33,18 +33,30 @@ These results describe the generated dataset, not performance on a real support 
 
 ## Real-data check
 
-The results above are the easy case: the models are learning rules that were written into the data generator. To test the pipeline on real data, it was also run on **50,855 fixed bug reports** from the public Apache Jira tracker (Hive, Spark, Kafka, HBase, HDFS, YARN, Flink, Cassandra), training on the oldest 70% and testing on the newest 15%.
+The results above are the easy case: the models are learning rules that were written into the data generator. To test the pipeline on real data, it runs on **96,086 bug reports** from the public Apache Jira tracker (Hive, Spark, Kafka, HBase, HDFS, YARN, Flink, Cassandra), of which 93,519 were still open 15 minutes after filing.
 
-| Test metric | Synthetic | Apache Jira | Jira baseline |
-| --- | --- | --- | --- |
-| Priority macro-F1 | 0.705 | 0.360 | 0.212 |
-| Priority accuracy | 68.8% | 65.6% | 73.5% |
-| Resolution MAE | 12.2 hours | 1,005 hours | 1,020 hours |
-| Resolution median error | 4.6 hours | 165 hours | 130 hours |
+The evaluation only uses what was known at the time:
 
-Priority has a real but modest signal: macro-F1 beats the baseline because the model finds some of the rarer levels, while accuracy falls below always answering Medium, which covers 74% of the test set. Resolution time is not useful on this data. MAE barely moves and median error is worse than the baseline, so the opening text and details say little about how long an open-source bug stays open.
+- **Inputs** are the summary, description, component and attachments as they stood 15 minutes after filing, rebuilt from each issue's changelog, plus project, filing time and the reporter's bug count over the previous 30 days.
+- **Priority** is the value 14 days after filing (5.4% changed in that time). **Resolution time** is hours to first resolution, capped at 90 days; a bug still open at the cap is labelled 90 days, never zero. Every outcome is kept: fixed, won't-fix, duplicate and never resolved (16.8%).
+- **Each year from 2019 to 2025 is predicted by models trained on bugs whose outcomes had settled before that year began.** A bug filed in November is not used for resolution time until February, even if it closed the next day.
+- **Text scores inside the stacked model are also forward-only.** Training rows are cut into five chronological blocks, and each block is scored by a text model fit only on outcomes settled before it. The first block trains the text model but is left out of the final model.
+- **2019 picks the model family** (Random Forest for priority, XGBoost for resolution time); 2020–2025 test it unchanged.
 
-These are bug reports rather than customer-support tickets. Jira has no customer tier or channel, so those fields are `unknown`. Only fixed bugs are included. Priorities, components, and attachment counts are their current values, which may have changed after a ticket was opened, so results may be optimistic. Random Forest beat XGBoost on validation here. The [Jira metrics](artifacts/jira/metrics.json) are committed; the hosted demo still uses the synthetic model. `make jira train-jira` reproduces the run.
+Averages over the six test years:
+
+| Metric | Model | Majority / median | Text only | Metadata only |
+| --- | --- | --- | --- | --- |
+| Priority macro-F1 | **0.332** | 0.214 | 0.296 | 0.300 |
+| Priority accuracy | 71.6% | **74.6%** | 71.7% | 47.1% |
+| Resolution MAE | 867 h | 916 h | **867 h** | 897 h |
+| Resolution median error | 508 h | **374 h** | 520 h | 492 h |
+
+Priority has a modest, real signal. The model beats every simple baseline on macro-F1 in five of six years (0.34–0.36 against at most 0.31), but not in 2025 (0.264 against 0.300), and its accuracy is below always answering Medium. Resolution time is not useful: the full model is no better than the text-only model, and its median error is worse than predicting the median. The most influential inputs for both tasks are the project and the text scores. In the last year's models, grouped SHAP values sum to the model output to within 1e-5. Feature code is unchanged, so the Spark/pandas parity test still applies.
+
+These are bug reports, not customer-support tickets. Jira has no customer tier or channel, so those fields are `unknown`. The population is issues whose type is Bug today, minus any that became Bugs after filing; issues filed as bugs and later re-typed are missing. Per-year results are in the [rolling metrics](artifacts/jira_temporal/metrics.json); `make jira train-jira` reproduces them. The hosted demo still uses the synthetic model.
+
+**Earlier result, kept for the record.** A first version tested on 50,855 fixed bugs with a single 70/15/15 split by filing date and reported priority macro-F1 0.360 and resolution MAE 1,005 hours ([metrics](artifacts/jira/metrics.json)). It is not comparable to the table above. It used only fixed bugs, labelled current priorities and last resolution dates, used later field values as inputs, counted training outcomes that weren't known at the test cutoff, and shuffled the inner stacking folds. Its population, targets and test period also differ.
 
 ## Run locally
 

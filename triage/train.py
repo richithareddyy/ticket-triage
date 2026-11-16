@@ -2,7 +2,7 @@
 
     python -m triage.train --data data/tickets.csv
     python -m triage.train --data data/tickets.csv --features data/features.parquet   # Spark features
-    python -m triage.train --data data/jira_tickets.csv --split time --out artifacts/jira  # real data
+    python -m triage.train --data data/tickets.csv --split time                            # newest tickets as test
 
 Each task trains Logistic Regression / Ridge, Random Forest and XGBoost on a
 train split, selects the best on validation (macro-F1 / MAE), refits the winner on

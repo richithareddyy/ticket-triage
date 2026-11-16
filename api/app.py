@@ -59,15 +59,25 @@ def validate_ticket(t, i):
 
 
 def real_data_summary():
-    path = os.path.join(os.path.dirname(METRICS_PATH), "jira", "metrics.json")
+    """Rolling-window results on Apache Jira (see triage.temporal), each metric against its strongest baseline."""
+    path = os.path.join(os.path.dirname(METRICS_PATH), "jira_temporal", "metrics.json")
     if not os.path.exists(path):
         return None
     with open(path) as f:
         m = json.load(f)
-    p, r = m["priority"], m["resolution_time"]
-    return {"rows": m["data"]["rows"],
-            "priority": p["final_test"], "priority_baseline": p["comparison"]["baseline_majority"]["test"],
-            "resolution": r["final_test"], "resolution_baseline": r["comparison"]["baseline_median"]["test"]}
+
+    def summary(task, higher_is_better):
+        s = m["tasks"][task]["summary"]
+        model, baselines = s[m["tasks"][task]["selected_model"]], [v for k, v in s.items() if k.startswith("baseline")]
+        best = max if higher_is_better else min
+        return model, {k: best(b[k] for b in baselines) for k in model}
+
+    priority, priority_baseline = summary("priority", True)
+    resolution, resolution_baseline = summary("resolution_time", False)
+    windows = [w["window"][:4] for w in m["tasks"]["priority"]["windows"] if w["role"] == "test"]
+    return {"rows": m["population"]["open_at_prediction_time"], "years": f"{windows[0]}-{windows[-1]}",
+            "priority": priority, "priority_baseline": priority_baseline,
+            "resolution": resolution, "resolution_baseline": resolution_baseline}
 
 
 def create_app(predictor=None):

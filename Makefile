@@ -10,7 +10,7 @@ help:
 	@echo "spark        build features with PySpark (in Docker, bundles Java)"
 	@echo "train-spark  train from the Spark-built feature table"
 	@echo "jira         download real bug reports from the public Apache Jira"
-	@echo "train-jira   train and evaluate on them with a time-based split"
+	@echo "train-jira   rolling forward-only evaluation on them"
 	@echo "test         run the test suite (+ Spark parity test in Docker)"
 	@echo "api / ui     run the Flask API (:5050) / Streamlit UI (:8501) locally"
 	@echo "up / down    start / stop the Dockerized API + UI"
@@ -40,7 +40,7 @@ jira:
 	$(PY) -m triage.jira
 
 train-jira:
-	$(PY) -m triage.train --data data/jira_tickets.csv --split time --out artifacts/jira
+	$(PY) -m triage.temporal --data data/jira_bugs.parquet --out artifacts/jira_temporal
 
 test:
 	$(PY) -m pytest -q

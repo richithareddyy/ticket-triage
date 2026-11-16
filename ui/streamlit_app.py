@@ -343,18 +343,20 @@ with tab_eval:
         real = evaluation.get("real_data")
         if real:
             theme.section("Real-data check: Apache Jira")
-            theme.html(f'<div class="tt-muted">{real["rows"]:,} real Apache Jira bug reports, tested on the newest '
-                       'tickets. These are open-source bugs, not support tickets, and resolution times here are '
-                       'no better than guessing the median.</div>'
+            theme.html(f'<div class="tt-muted">{real["rows"]:,} real Apache Jira bug reports, scored as filed. Each '
+                       f'year from {real["years"]} is predicted by a model trained only on earlier, settled outcomes; '
+                       'figures are yearly averages against the strongest simple baseline. These are open-source '
+                       'bugs, not support tickets, and resolution time (capped at 90 days) is no better than '
+                       'a text-only model.</div>'
                        + theme.stats([
                            ("Priority macro-F1", f"{real['priority']['macro_f1']:.3f}",
-                            f"baseline {real['priority_baseline']['macro_f1']:.3f}"),
+                            f"best baseline {real['priority_baseline']['macro_f1']:.3f}"),
                            ("Priority accuracy", f"{real['priority']['accuracy']:.1%}",
-                            f"baseline {real['priority_baseline']['accuracy']:.1%}"),
+                            f"best baseline {real['priority_baseline']['accuracy']:.1%}"),
                            ("Resolution MAE", f"{real['resolution']['mae_hours']:,.0f} h",
-                            f"baseline {real['resolution_baseline']['mae_hours']:,.0f} h"),
+                            f"best baseline {real['resolution_baseline']['mae_hours']:,.0f} h"),
                            ("Median error", f"{real['resolution']['median_ae_hours']:.0f} h",
-                            f"baseline {real['resolution_baseline']['median_ae_hours']:.0f} h"),
+                            f"best baseline {real['resolution_baseline']['median_ae_hours']:.0f} h"),
                        ]))
 
         theme.section("Models compared")
@@ -382,9 +384,10 @@ with tab_eval:
 real = evaluation.get("real_data") if evaluation else None
 jira = ""
 if real:
-    jira = (f'<p>On {real["rows"]:,} real Apache Jira bug reports, priority macro-F1 falls to '
-            f'{real["priority"]["macro_f1"]:.2f} (baseline {real["priority_baseline"]["macro_f1"]:.2f}), and resolution '
-            'times are no better than guessing the median. Those are open-source bugs, not support tickets.</p>')
+    jira = (f'<p>On {real["rows"]:,} real Apache Jira bug reports, each year predicted only from earlier ones, '
+            f'priority macro-F1 falls to {real["priority"]["macro_f1"]:.2f} (best simple baseline '
+            f'{real["priority_baseline"]["macro_f1"]:.2f}), and resolution times are no better than a text-only model. '
+            'Those are open-source bugs, not support tickets.</p>')
 theme.html(f"""<div class="tt-band"><h2>The honest numbers.<br><em>Not every ticket is this easy.</em></h2>
 <p>This demo's tickets are synthetic, so its scores aren't evidence of how it would do in a real queue.</p>{jira}
 <p>SHAP shows what influenced a prediction, not what caused a delay. <a href="{REPO_URL}">Source on GitHub</a></p></div>""")
