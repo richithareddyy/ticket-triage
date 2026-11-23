@@ -47,14 +47,16 @@ Averages over the six test years:
 
 | Metric | Model | Majority / median | Text only | Metadata only |
 | --- | --- | --- | --- | --- |
-| Priority macro-F1 | **0.332** | 0.214 | 0.296 | 0.300 |
-| Priority accuracy | 71.6% | **74.6%** | 71.7% | 47.1% |
+| Priority macro-F1 | **0.333** | 0.214 | 0.296 | 0.297 |
+| Priority accuracy | 71.5% | **74.6%** | 71.7% | 46.8% |
 | Resolution MAE | 867 h | 916 h | **867 h** | 897 h |
-| Resolution median error | 508 h | **374 h** | 520 h | 492 h |
+| Resolution median error | 508 h | **374 h** | 520 h | 491 h |
 
-Priority has a modest, real signal. The model beats every simple baseline on macro-F1 in five of six years (0.34–0.36 against at most 0.31), but not in 2025 (0.264 against 0.300), and its accuracy is below always answering Medium. Resolution time is not useful: the full model is no better than the text-only model, and its median error is worse than predicting the median. The most influential inputs for both tasks are the project and the text scores. In the last year's models, grouped SHAP values sum to the model output to within 1e-5. Feature code is unchanged, so the Spark/pandas parity test still applies.
+Priority has a modest, real signal. The model beats every simple baseline on macro-F1 in five of six years (0.33–0.36 against at most 0.31), but not in 2025 (0.266 against 0.298), and its accuracy is below always answering Medium. Resolution time is not useful: the full model is no better than the text-only model, and its median error is worse than predicting the median. The most influential inputs for both tasks are the project and the text scores. In the last year's models, grouped SHAP values sum to the model output to within 1e-5. Feature code is unchanged, so the Spark/pandas parity test still applies.
 
 These are bug reports, not customer-support tickets. Jira has no customer tier or channel, so those fields are `unknown`. The population is issues whose type is Bug today, minus any that became Bugs after filing; issues filed as bugs and later re-typed are missing. Per-year results are in the [rolling metrics](artifacts/jira_temporal/metrics.json); `make jira train-jira` reproduces them. The hosted demo still uses the synthetic model.
+
+**Correction:** components removed within 15 minutes of filing were counted as present; fixing that changed the category on 137 of 96,086 bugs and moved average priority macro-F1 from 0.332 to 0.333 and resolution MAE by 0.2 hours, with no change to the conclusions.
 
 **Earlier result, kept for the record.** A first version tested on 50,855 fixed bugs with a single 70/15/15 split by filing date and reported priority macro-F1 0.360 and resolution MAE 1,005 hours ([metrics](artifacts/jira/metrics.json)). It is not comparable to the table above. It used only fixed bugs, labelled current priorities and last resolution dates, used later field values as inputs, counted training outcomes that weren't known at the test cutoff, and shuffled the inner stacking folds. Its population, targets and test period also differ.
 
