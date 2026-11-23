@@ -14,7 +14,7 @@ CATEGORICAL_FEATURES = ["channel", "product", "customer_tier", "category"]
 NUMERIC_FEATURES = ["text_len", "word_count", "exclamation_count", "question_count", "upper_ratio",
                     "urgency_count", "has_error_code", "sentiment", "hour", "day_of_week",
                     "is_weekend", "is_business_hours", "prior_tickets_30d", "attachments"]
-FEATURE_COLUMNS = [TEXT_FEATURE] + CATEGORICAL_FEATURES + NUMERIC_FEATURES
+FEATURE_COLUMNS = [TEXT_FEATURE, *CATEGORICAL_FEATURES, *NUMERIC_FEATURES]
 
 
 def build_features(df):
@@ -42,7 +42,9 @@ def build_features(df):
     out["hour"] = created.dt.hour
     out["day_of_week"] = created.dt.dayofweek
     out["is_weekend"] = (out["day_of_week"] >= 5).astype(int)
-    out["is_business_hours"] = ((out["hour"] >= 8) & (out["hour"] < 18) & (out["is_weekend"] == 0)).astype(int)
+    out["is_business_hours"] = (
+        (out["hour"] >= 8) & (out["hour"] < 18) & (out["is_weekend"] == 0)
+    ).astype(int)
     out["prior_tickets_30d"] = pd.to_numeric(df["prior_tickets_30d"]).fillna(0).astype(int)
     out["attachments"] = pd.to_numeric(df["attachments"]).fillna(0).astype(int)
     return out[FEATURE_COLUMNS]

@@ -21,7 +21,9 @@ def test_health(client):
 def test_predict_single(client):
     r = client.post("/predict", json=SAMPLE_TICKET)
     assert r.status_code == 200
-    assert {"priority", "confidence", "resolution_hours", "sla_breach_risk", "latency_ms"} <= set(r.json)
+    assert {"priority", "confidence", "resolution_hours", "sla_breach_risk", "latency_ms"} <= set(
+        r.json
+    )
     assert "explanation" not in r.json
 
 
@@ -39,7 +41,10 @@ def test_predict_batch_keeps_ids(client):
 
 
 def test_optional_fields_default(client):
-    minimal = {k: SAMPLE_TICKET[k] for k in ("subject", "description", "channel", "product", "customer_tier")}
+    minimal = {
+        k: SAMPLE_TICKET[k]
+        for k in ("subject", "description", "channel", "product", "customer_tier")
+    }
     assert client.post("/predict", json=minimal).status_code == 200
 
 

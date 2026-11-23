@@ -59,7 +59,7 @@ def validate_ticket(t, i):
 
 
 def real_data_summary():
-    """Rolling-window results on Apache Jira (see triage.temporal), each metric against its strongest baseline."""
+    """Rolling-window Jira results (see triage.temporal), each against its strongest baseline."""
     path = os.path.join(os.path.dirname(METRICS_PATH), "jira_temporal", "metrics.json")
     if not os.path.exists(path):
         return None
@@ -68,16 +68,24 @@ def real_data_summary():
 
     def summary(task, higher_is_better):
         s = m["tasks"][task]["summary"]
-        model, baselines = s[m["tasks"][task]["selected_model"]], [v for k, v in s.items() if k.startswith("baseline")]
+        model, baselines = (
+            s[m["tasks"][task]["selected_model"]],
+            [v for k, v in s.items() if k.startswith("baseline")],
+        )
         best = max if higher_is_better else min
         return model, {k: best(b[k] for b in baselines) for k in model}
 
     priority, priority_baseline = summary("priority", True)
     resolution, resolution_baseline = summary("resolution_time", False)
     windows = [w["window"][:4] for w in m["tasks"]["priority"]["windows"] if w["role"] == "test"]
-    return {"rows": m["population"]["open_at_prediction_time"], "years": f"{windows[0]}-{windows[-1]}",
-            "priority": priority, "priority_baseline": priority_baseline,
-            "resolution": resolution, "resolution_baseline": resolution_baseline}
+    return {
+        "rows": m["population"]["open_at_prediction_time"],
+        "years": f"{windows[0]}-{windows[-1]}",
+        "priority": priority,
+        "priority_baseline": priority_baseline,
+        "resolution": resolution,
+        "resolution_baseline": resolution_baseline,
+    }
 
 
 def create_app(predictor=None):
@@ -100,7 +108,7 @@ def create_app(predictor=None):
         with open(METRICS_PATH) as f:
             m = json.load(f)
         keep = ("selected_model", "final_test", "comparison", "shap_importance")
-        return jsonify(priority={k: m["priority"][k] for k in keep + ("confusion_matrix",)},
+        return jsonify(priority={k: m["priority"][k] for k in (*keep, "confusion_matrix")},
                        resolution_time={k: m["resolution_time"][k] for k in keep},
                        real_data=real_data_summary())
 
@@ -127,7 +135,11 @@ def create_app(predictor=None):
         for t, r in zip(tickets, results):
             if "ticket_id" in t:
                 r["ticket_id"] = t["ticket_id"]
-        payload = {"predictions": results, "latency_ms": ms} if batch else {**results[0], "latency_ms": ms}
+        payload = (
+            {"predictions": results, "latency_ms": ms}
+            if batch
+            else {**results[0], "latency_ms": ms}
+        )
         return jsonify(payload)
 
     @app.errorhandler(404)
@@ -147,4 +159,4 @@ def create_app(predictor=None):
 
 
 if __name__ == "__main__":
-    create_app().run(host="0.0.0.0", port=int(os.environ.get("PORT", 5050)))
+    create_app().run(host="0.0.0.0", port=int(os.environ.get("PORT", "5050")))

@@ -4,7 +4,7 @@ import os
 import pytest
 
 pytest.importorskip("streamlit")
-from streamlit.testing.v1 import AppTest  # noqa: E402
+from streamlit.testing.v1 import AppTest
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 

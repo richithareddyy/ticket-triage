@@ -36,12 +36,25 @@ FIELDS = ("summary,description,priority,created,resolutiondate,project,component
           "attachment,issuetype")
 PAGE_SIZE = 1000
 MAX_DESCRIPTION = 4000  # long descriptions are mostly pasted stack traces
-PRIORITY_MAP = {"Blocker": "Critical", "Critical": "High", "Major": "Medium", "Minor": "Low", "Trivial": "Low",
-                # Cassandra's newer scheme
-                "Urgent": "Critical", "High": "High", "Normal": "Medium", "Low": "Low"}
-FILED_GRACE = pd.Timedelta(minutes=15)  # attachments and quick fixes to the text land just after filing
+PRIORITY_MAP = {
+    "Blocker": "Critical",
+    "Critical": "High",
+    "Major": "Medium",
+    "Minor": "Low",
+    "Trivial": "Low",
+    # Cassandra's newer scheme
+    "Urgent": "Critical",
+    "High": "High",
+    "Normal": "Medium",
+    "Low": "Low",
+}
+FILED_GRACE = pd.Timedelta(
+    minutes=15
+)  # attachments and quick fixes to the text land just after filing
 PRIORITY_HORIZON = pd.Timedelta(days=14)
-EARLIEST = pd.Timestamp("2005-01-01")  # early records include impossible dates such as the year 0010
+EARLIEST = pd.Timestamp(
+    "2005-01-01"
+)  # early records include impossible dates such as the year 0010
 
 
 def fetch_issues(cache_dir, projects=PROJECTS):
@@ -55,8 +68,17 @@ def fetch_issues(cache_dir, projects=PROJECTS):
             with gzip.open(path, "rt") as f:
                 page = json.load(f)
         else:
-            r = requests.get(SEARCH_URL, timeout=300, params={
-                "jql": jql, "fields": FIELDS, "expand": "changelog", "startAt": start, "maxResults": PAGE_SIZE})
+            r = requests.get(
+                SEARCH_URL,
+                timeout=300,
+                params={
+                    "jql": jql,
+                    "fields": FIELDS,
+                    "expand": "changelog",
+                    "startAt": start,
+                    "maxResults": PAGE_SIZE,
+                },
+            )
             if r.status_code in (429, 502, 503, 504):
                 time.sleep(30)
                 continue
@@ -117,7 +139,7 @@ def _changes(issue):
 
 
 def value_at(current, changes, field, when, key="fromString"):
-    """A single-valued field as it was at `when`: the "from" side of the first later change, else current."""
+    """A single-valued field at `when`: the "from" side of the first later change, else current."""
     for at, name, item in changes:
         if name == field and at > when:
             return item.get(key)
@@ -125,7 +147,7 @@ def value_at(current, changes, field, when, key="fromString"):
 
 
 def ids_at(current_ids, changes, field, when):
-    """A multi-valued field (components, attachments) at `when`, undoing later adds and removals by id."""
+    """A multi-valued field (components, attachments) at `when`, undoing later changes by id."""
     ids = set(current_ids)
     for at, name, item in reversed(changes):
         if name != field or at <= when:
@@ -146,7 +168,7 @@ def first_resolved(changes, resolutiondate):
 
 
 def to_bugs(issues):
-    """One row per bug: inputs as filed, timestamped labels. Reporter names are used and then dropped."""
+    """One row per bug: inputs as filed, timestamped labels. Reporter names are dropped."""
     rows = []
     for issue in issues:
         f = issue["fields"]
@@ -158,7 +180,9 @@ def to_bugs(issues):
         if value_at("Bug", changes, "issuetype", filed) != "Bug":
             continue  # re-typed into a Bug later, so not a bug report when filed
         current_priority = (f.get("priority") or {}).get("name")
-        priority = PRIORITY_MAP.get(value_at(current_priority, changes, "priority", created + PRIORITY_HORIZON))
+        priority = PRIORITY_MAP.get(
+            value_at(current_priority, changes, "priority", created + PRIORITY_HORIZON)
+        )
         if priority is None:
             continue
         components = {str(c["id"]): c["name"] for c in f.get("components") or []}
@@ -167,22 +191,38 @@ def to_bugs(issues):
             if name == "Component":
                 for side in ("from", "to"):
                     if item.get(side):
-                        components.setdefault(str(item[side]), item.get(side + "String") or "unknown")
+                        components.setdefault(
+                            str(item[side]), item.get(side + "String") or "unknown"
+                        )
         filed_components = sorted(components[i] for i in filed_ids)
-        attachments = ids_at([str(a["id"]) for a in f.get("attachment") or []], changes, "Attachment", filed)
+        attachments = ids_at(
+            [str(a["id"]) for a in f.get("attachment") or []], changes, "Attachment", filed
+        )
         resolved = first_resolved(changes, f.get("resolutiondate"))
-        rows.append(dict(
-            ticket_id=issue["key"], created_at=created,
-            subject=value_at(f.get("summary") or "", changes, "summary", filed) or "",
-            description=(value_at(f.get("description") or "", changes, "description", filed) or "")[:MAX_DESCRIPTION],
-            channel="unknown", product=issue["key"].split("-")[0], customer_tier="unknown",
-            category=filed_components[0] if filed_components else "unknown",
-            attachments=len(attachments),
-            priority=priority, priority_known_at=created + PRIORITY_HORIZON,
-            filed_priority=PRIORITY_MAP.get(value_at(current_priority, changes, "priority", filed)),
-            first_resolved_at=resolved if resolved is not pd.NaT and resolved >= created else pd.NaT,
-            reporter=(f.get("reporter") or {}).get("name"),
-        ))
+        rows.append(
+            dict(
+                ticket_id=issue["key"],
+                created_at=created,
+                subject=value_at(f.get("summary") or "", changes, "summary", filed) or "",
+                description=(
+                    value_at(f.get("description") or "", changes, "description", filed) or ""
+                )[:MAX_DESCRIPTION],
+                channel="unknown",
+                product=issue["key"].split("-")[0],
+                customer_tier="unknown",
+                category=filed_components[0] if filed_components else "unknown",
+                attachments=len(attachments),
+                priority=priority,
+                priority_known_at=created + PRIORITY_HORIZON,
+                filed_priority=PRIORITY_MAP.get(
+                    value_at(current_priority, changes, "priority", filed)
+                ),
+                first_resolved_at=resolved
+                if resolved is not pd.NaT and resolved >= created
+                else pd.NaT,
+                reporter=(f.get("reporter") or {}).get("name"),
+            )
+        )
     df = pd.DataFrame(rows).sort_values(["created_at", "ticket_id"]).reset_index(drop=True)
     df["prior_tickets_30d"] = _prior_tickets(df)
     return df.drop(columns=["reporter"])
@@ -210,7 +250,9 @@ def _prior_tickets(df):
 
 
 def main():
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     ap.add_argument("--cache", default="data/jira_raw")
     ap.add_argument("--out", default="data/jira_bugs.parquet")
     args = ap.parse_args()

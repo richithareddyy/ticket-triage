@@ -54,14 +54,18 @@ def build_features(df):
         F.size(F.filter(F.split("_text", r"\s+"), lambda x: x != "")).alias("word_count"),
         _count(F.col("_text"), "!").alias("exclamation_count"),
         _count(F.col("_text"), r"\?").alias("question_count"),
-        (F.length(F.regexp_replace("_text", "[^A-Z]", "")) / F.greatest(letters, F.lit(1))).alias("upper_ratio"),
+        (F.length(F.regexp_replace("_text", "[^A-Z]", "")) / F.greatest(letters, F.lit(1))).alias(
+            "upper_ratio"
+        ),
         _count(F.col("_lower"), URGENCY_RE).alias("urgency_count"),
         F.col("_lower").rlike(ERROR_CODE_RE).cast("int").alias("has_error_code"),
         sentiment_udf("_text").alias("sentiment"),
         F.hour(created).alias("hour"),
         dow.alias("day_of_week"),
         (dow >= 5).cast("int").alias("is_weekend"),
-        ((F.hour(created) >= 8) & (F.hour(created) < 18) & (dow < 5)).cast("int").alias("is_business_hours"),
+        ((F.hour(created) >= 8) & (F.hour(created) < 18) & (dow < 5))
+        .cast("int")
+        .alias("is_business_hours"),
         F.coalesce(F.col("prior_tickets_30d").cast("int"), F.lit(0)).alias("prior_tickets_30d"),
         F.coalesce(F.col("attachments").cast("int"), F.lit(0)).alias("attachments"),
     ]
@@ -70,7 +74,9 @@ def build_features(df):
 
 
 def main():
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     ap.add_argument("--input", default="data/tickets.csv")
     ap.add_argument("--output", default="data/features.parquet")
     ap.add_argument("--master", default="local[*]")

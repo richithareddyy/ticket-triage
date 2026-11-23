@@ -50,9 +50,19 @@ warnings.filterwarnings("ignore", message=".*encountered in matmul", category=Ru
 
 TASKS = ("classification", "regression")
 RESOLUTION_CAP_HOURS = 90 * 24
-MATURITY = {"classification": PRIORITY_HORIZON, "regression": pd.Timedelta(hours=RESOLUTION_CAP_HOURS)}
+MATURITY = {
+    "classification": PRIORITY_HORIZON,
+    "regression": pd.Timedelta(hours=RESOLUTION_CAP_HOURS),
+}
 # Inputs that don't come from the ticket text; channel and tier are always "unknown" in Jira.
-METADATA_NUMERIC = ["hour", "day_of_week", "is_weekend", "is_business_hours", "prior_tickets_30d", "attachments"]
+METADATA_NUMERIC = [
+    "hour",
+    "day_of_week",
+    "is_weekend",
+    "is_business_hours",
+    "prior_tickets_30d",
+    "attachments",
+]
 INNER_BLOCKS = 5
 MIN_TEXT_ROWS = 500
 
@@ -77,11 +87,15 @@ def labels(df, task):
 
 
 def window_rows(created, ready, eligible, cutoff, end, snapshot):
-    """Training rows settled by the cutoff, and test rows filed in the window and settled by the snapshot."""
+    """Rows settled by the cutoff (train); filed in the window and settled by snapshot (test)."""
     created = np.asarray(created, dtype="datetime64[ns]")
     train = np.flatnonzero(eligible & (ready <= np.datetime64(cutoff)))
-    test = np.flatnonzero(eligible & (created >= np.datetime64(cutoff)) & (created < np.datetime64(end))
-                          & (ready <= np.datetime64(snapshot)))
+    test = np.flatnonzero(
+        eligible
+        & (created >= np.datetime64(cutoff))
+        & (created < np.datetime64(end))
+        & (ready <= np.datetime64(snapshot))
+    )
     return train, test
 
 
@@ -170,7 +184,7 @@ def evaluate_window(task, X, y, created, ready, train, test, names):
 
 
 def baselines(task, estimator, X, y, train, test):
-    """Constant, text-only and metadata-only predictions; metadata-only reuses the chosen model family."""
+    """Constant, text-only and metadata-only predictions, the last with the chosen family."""
     Xtr, ytr, Xte, yte = X.iloc[train], y[train], X.iloc[test], y[test]
     if task == "classification":
         constant = "baseline_majority", DummyClassifier(strategy="most_frequent")
@@ -179,7 +193,9 @@ def baselines(task, estimator, X, y, train, test):
     results = {constant[0]: score(task, yte, constant[1].fit(Xtr, ytr).predict(Xte))}
     text_only = TextScorer(task).fit(Xtr, _target(task, ytr)).pipe_
     pred = text_only.predict(Xte[TEXT_FEATURE])
-    results["baseline_text_only"] = score(task, yte, pred if task == "classification" else np.expm1(pred).clip(0.25))
+    results["baseline_text_only"] = score(
+        task, yte, pred if task == "classification" else np.expm1(pred).clip(0.25)
+    )
     meta = metadata_pipeline(estimator).fit(Xtr, _target(task, ytr))
     results["baseline_metadata_only"] = score(task, yte, predict(meta, task, Xte))
     return results
@@ -200,21 +216,34 @@ def shap_check(pipe, task, X, background):
         raw = model.decision_function(Xt)
     else:
         raw = model.predict_proba(Xt)
-    grouped = np.stack([np.column_stack([v for _, _, v in exp._grouped(values[:, :, c], X)]).sum(axis=1)
-                        for c in range(values.shape[2])], axis=1)
+    grouped = np.stack(
+        [
+            np.column_stack([v for _, _, v in exp._grouped(values[:, :, c], X)]).sum(axis=1)
+            for c in range(values.shape[2])
+        ],
+        axis=1,
+    )
     return float(np.abs(grouped + base - raw).max()), exp.global_importance(X)
 
 
 def yearly_windows(first, last):
-    return [(pd.Timestamp(f"{y}-01-01"), pd.Timestamp(f"{y + 1}-01-01")) for y in range(first, last + 1)]
+    return [
+        (pd.Timestamp(f"{y}-01-01"), pd.Timestamp(f"{y + 1}-01-01")) for y in range(first, last + 1)
+    ]
 
 
 def main():
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     ap.add_argument("--data", default="data/jira_bugs.parquet")
-    ap.add_argument("--features", default="data/jira_bug_features.parquet", help="cache for built features")
+    ap.add_argument(
+        "--features", default="data/jira_bug_features.parquet", help="cache for built features"
+    )
     ap.add_argument("--out", default="artifacts/jira_temporal")
-    ap.add_argument("--first-year", type=int, default=2019, help="this window picks the model family")
+    ap.add_argument(
+        "--first-year", type=int, default=2019, help="this window picks the model family"
+    )
     ap.add_argument("--last-year", type=int, default=2025)
     args = ap.parse_args()
     os.makedirs(args.out, exist_ok=True)
@@ -233,14 +262,23 @@ def main():
     windows = yearly_windows(args.first_year, args.last_year)
     print(f"{len(df):,} bugs, {eligible.sum():,} open at prediction time; snapshot {snapshot}")
 
-    report = {"protocol": __doc__.split("Protocol", 1)[1].strip(), "snapshot_at": snapshot.isoformat(),
-              "population": {"bugs": len(df), "open_at_prediction_time": int(eligible.sum()),
-                             "never_resolved": int(df["first_resolved_at"].isna().sum()),
-                             "priority_changed_after_filing": int((df["priority"] != df["filed_priority"]).sum())},
-              "settings": {"filed_grace_minutes": FILED_GRACE.total_seconds() / 60,
-                           "priority_horizon_days": PRIORITY_HORIZON.days,
-                           "resolution_cap_hours": RESOLUTION_CAP_HOURS, "inner_blocks": INNER_BLOCKS},
-              "tasks": {}}
+    report = {
+        "protocol": __doc__.split("Protocol", 1)[1].strip(),
+        "snapshot_at": snapshot.isoformat(),
+        "population": {
+            "bugs": len(df),
+            "open_at_prediction_time": int(eligible.sum()),
+            "never_resolved": int(df["first_resolved_at"].isna().sum()),
+            "priority_changed_after_filing": int((df["priority"] != df["filed_priority"]).sum()),
+        },
+        "settings": {
+            "filed_grace_minutes": FILED_GRACE.total_seconds() / 60,
+            "priority_horizon_days": PRIORITY_HORIZON.days,
+            "resolution_cap_hours": RESOLUTION_CAP_HOURS,
+            "inner_blocks": INNER_BLOCKS,
+        },
+        "tasks": {},
+    }
     for task in TASKS:
         name = "priority" if task == "classification" else "resolution_time"
         y, ready = labels(df, task)
@@ -254,12 +292,19 @@ def main():
                 pick = max if task == "classification" else min
                 chosen = pick(fitted, key=lambda m: results[m][metric])
             results.update(baselines(task, candidates(task)[chosen], X, y, train, test))
-            row = {"window": f"{cutoff:%Y-%m-%d} to {end:%Y-%m-%d}", "role": "selection" if i == 0 else "test",
-                   "train_rows": len(train), "warm_up_rows": int((~inner[1]).sum()), "test_rows": len(test),
-                   "results": results}
+            row = {
+                "window": f"{cutoff:%Y-%m-%d} to {end:%Y-%m-%d}",
+                "role": "selection" if i == 0 else "test",
+                "train_rows": len(train),
+                "warm_up_rows": int((~inner[1]).sum()),
+                "test_rows": len(test),
+                "results": results,
+            }
             if task == "regression":
                 row["test_share_at_cap"] = round(float((y[test] >= RESOLUTION_CAP_HOURS).mean()), 4)
-                row["test_share_never_resolved"] = round(float(df["first_resolved_at"].iloc[test].isna().mean()), 4)
+                row["test_share_never_resolved"] = round(
+                    float(df["first_resolved_at"].iloc[test].isna().mean()), 4
+                )
             rows.append(row)
             last = (fitted[chosen], train, test)
             print(f"[{name}] {row['window']} train={len(train):,} test={len(test):,} "
@@ -287,10 +332,14 @@ def _headline(task, r):
 def _summarise(task, rows, chosen):
     """Mean of each method over the test windows (selection window excluded), weighted equally."""
     tests = [r for r in rows if r["role"] == "test"]
-    keys = ("macro_f1", "accuracy") if task == "classification" else ("mae_hours", "median_ae_hours")
+    keys = (
+        ("macro_f1", "accuracy") if task == "classification" else ("mae_hours", "median_ae_hours")
+    )
     out = {}
     for method in [chosen] + [m for m in tests[0]["results"] if m.startswith("baseline")]:
-        out[method] = {k: round(float(np.mean([r["results"][method][k] for r in tests])), 4) for k in keys}
+        out[method] = {
+            k: round(float(np.mean([r["results"][method][k] for r in tests])), 4) for k in keys
+        }
     metric = keys[0]
     best = (max if task == "classification" else min)(
         (m for m in out if m.startswith("baseline")), key=lambda m: out[m][metric])

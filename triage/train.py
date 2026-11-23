@@ -1,8 +1,8 @@
 """Train and compare priority classifiers and resolution-time regressors.
 
     python -m triage.train --data data/tickets.csv
-    python -m triage.train --data data/tickets.csv --features data/features.parquet   # Spark features
-    python -m triage.train --data data/tickets.csv --split time                            # newest tickets as test
+    python -m triage.train --data data/tickets.csv --features data/features.parquet  # Spark
+    python -m triage.train --data data/tickets.csv --split time  # newest tickets as test
 
 Each task trains Logistic Regression / Ridge, Random Forest and XGBoost on a
 train split, selects the best on validation (macro-F1 / MAE), refits the winner on
@@ -21,8 +21,16 @@ import joblib
 import numpy as np
 import pandas as pd
 from sklearn.dummy import DummyClassifier, DummyRegressor
-from sklearn.metrics import (accuracy_score, classification_report, confusion_matrix, f1_score,
-                             mean_absolute_error, mean_squared_error, median_absolute_error, r2_score)
+from sklearn.metrics import (
+    accuracy_score,
+    classification_report,
+    confusion_matrix,
+    f1_score,
+    mean_absolute_error,
+    mean_squared_error,
+    median_absolute_error,
+    r2_score,
+)
 from sklearn.model_selection import train_test_split
 
 from .data import PRIORITIES
@@ -98,7 +106,9 @@ def compare(task, candidates, X, y, split):
         results[name] = {"val": score(task, y[va], predict(pipe, task, X.iloc[va])),
                          "test": score(task, y[te], predict(pipe, task, X.iloc[te])),
                          "train_seconds": round(time.time() - t, 1)}
-        print(f"  [{task}] {name:<20} val={results[name]['val']}  ({results[name]['train_seconds']}s)")
+        print(
+            f"  [{task}] {name:<20} val={results[name]['val']}  ({results[name]['train_seconds']}s)"
+        )
 
     models = [name for name in results if not name.startswith("baseline")]
     if task == "classification":
@@ -126,7 +136,9 @@ def save_importance_plot(importance, title, path):
 
 
 def main():
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     ap.add_argument("--data", default="data/tickets.csv")
     ap.add_argument("--features", default=None, help="optional Spark-built features parquet")
     ap.add_argument("--out", default="artifacts")
@@ -139,7 +151,10 @@ def main():
     trva = np.concatenate([tr, va])
     print(f"train={len(tr):,} val={len(va):,} test={len(te):,}")
 
-    cls_candidates = {"baseline_majority": DummyClassifier(strategy="most_frequent"), **classifiers()}
+    cls_candidates = {
+        "baseline_majority": DummyClassifier(strategy="most_frequent"),
+        **classifiers(),
+    }
     best_cls, cls_results = compare("classification", cls_candidates, X, y_cls, split)
     cls_pipe = fit(classifiers()[best_cls], "classification", X.iloc[trva], y_cls[trva])
     cls_pred = predict(cls_pipe, "classification", X.iloc[te])
@@ -155,35 +170,59 @@ def main():
     cls_imp = Explainer(cls_pipe, background).global_importance(sample)
     reg_imp = Explainer(reg_pipe, background).global_importance(sample)
     print(f"SHAP global importance in {time.time() - t:.1f}s")
-    save_importance_plot(cls_imp, f"Priority ({best_cls}) - top SHAP features", f"{args.out}/shap_priority.png")
+    save_importance_plot(
+        cls_imp, f"Priority ({best_cls}) - top SHAP features", f"{args.out}/shap_priority.png"
+    )
     save_importance_plot(reg_imp, f"Resolution time ({best_reg}) - top SHAP features",
                          f"{args.out}/shap_resolution.png")
 
     metrics = {
-        "data": {"rows": len(X), "train": len(tr), "val": len(va), "test": len(te), "split": args.split},
+        "data": {
+            "rows": len(X),
+            "train": len(tr),
+            "val": len(va),
+            "test": len(te),
+            "split": args.split,
+        },
         "priority": {
-            "selected_model": best_cls, "comparison": cls_results,
+            "selected_model": best_cls,
+            "comparison": cls_results,
             "final_test": cls_metrics(y_cls[te], cls_pred),
-            "classification_report": classification_report(y_cls[te], cls_pred, target_names=PRIORITIES,
-                                                           output_dict=True),
-            "confusion_matrix": {"labels": PRIORITIES,
-                                 "matrix": confusion_matrix(y_cls[te], cls_pred).tolist()},
+            "classification_report": classification_report(
+                y_cls[te], cls_pred, target_names=PRIORITIES, output_dict=True
+            ),
+            "confusion_matrix": {
+                "labels": PRIORITIES,
+                "matrix": confusion_matrix(y_cls[te], cls_pred).tolist(),
+            },
             "shap_importance": cls_imp,
         },
         "resolution_time": {
-            "selected_model": best_reg, "comparison": reg_results,
-            "final_test": reg_metrics(y_reg[te], reg_pred), "shap_importance": reg_imp,
+            "selected_model": best_reg,
+            "comparison": reg_results,
+            "final_test": reg_metrics(y_reg[te], reg_pred),
+            "shap_importance": reg_imp,
         },
     }
     with open(f"{args.out}/metrics.json", "w") as f:
         json.dump(metrics, f, indent=2)
 
-    joblib.dump({"priority_pipeline": cls_pipe, "resolution_pipeline": reg_pipe, "classes": PRIORITIES,
-                 "background": background, "models": {"priority": best_cls, "resolution": best_reg},
-                 "metrics": {"priority": metrics["priority"]["final_test"],
-                             "resolution_time": metrics["resolution_time"]["final_test"]},
-                 "trained_at": pd.Timestamp.now(tz="UTC").isoformat()},
-                f"{args.out}/model.joblib", compress=3)
+    joblib.dump(
+        {
+            "priority_pipeline": cls_pipe,
+            "resolution_pipeline": reg_pipe,
+            "classes": PRIORITIES,
+            "background": background,
+            "models": {"priority": best_cls, "resolution": best_reg},
+            "metrics": {
+                "priority": metrics["priority"]["final_test"],
+                "resolution_time": metrics["resolution_time"]["final_test"],
+            },
+            "trained_at": pd.Timestamp.now(tz="UTC").isoformat(),
+        },
+        f"{args.out}/model.joblib",
+        compress=3,
+    )
 
     print("\n=== Held-out test ===")
     print(f"priority   ({best_cls}): {metrics['priority']['final_test']}")

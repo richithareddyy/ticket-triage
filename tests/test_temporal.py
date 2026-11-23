@@ -4,8 +4,16 @@ import pytest
 
 from triage.features import TEXT_FEATURE, build_features
 from triage.model import classifiers, regressors
-from triage.temporal import (RESOLUTION_CAP_HOURS, evaluate_window, fit_stacked, forward_text_scores, in_queue,
-                             labels, shap_check, window_rows)
+from triage.temporal import (
+    RESOLUTION_CAP_HOURS,
+    evaluate_window,
+    fit_stacked,
+    forward_text_scores,
+    in_queue,
+    labels,
+    shap_check,
+    window_rows,
+)
 
 CUTOFF = pd.Timestamp("2021-01-01")
 SNAPSHOT = pd.Timestamp("2022-06-01")
@@ -18,12 +26,20 @@ def resolution_rows(rows):
 
 
 def test_old_ticket_resolving_after_the_cutoff_cannot_train_that_cutoff():
-    df = resolution_rows([
-        ("2020-11-01", "2021-01-10"),  # 70 days: still open at the cutoff, outcome unknown
-        ("2020-06-01", "2021-01-10"),  # open past the 90-day cap before the cutoff: label is the cap
-        ("2020-11-20", "2020-11-21"),  # resolved quickly, but filed under 90 days before the cutoff
-        ("2020-03-01", "2020-03-03"),
-    ])
+    df = resolution_rows(
+        [
+            ("2020-11-01", "2021-01-10"),  # 70 days: still open at the cutoff, outcome unknown
+            (
+                "2020-06-01",
+                "2021-01-10",
+            ),  # open past the 90-day cap before the cutoff: label is the cap
+            (
+                "2020-11-20",
+                "2020-11-21",
+            ),  # resolved quickly, but filed under 90 days before the cutoff
+            ("2020-03-01", "2020-03-03"),
+        ]
+    )
     y, ready = labels(df, "regression")
     train, _ = window_rows(df["created_at"], ready, in_queue(df), CUTOFF, CUTOFF, SNAPSHOT)
     assert train.tolist() == [1, 3]
@@ -31,10 +47,16 @@ def test_old_ticket_resolving_after_the_cutoff_cannot_train_that_cutoff():
 
 
 def test_unresolved_tickets_are_censored_at_the_cap_never_zero():
-    df = resolution_rows([("2020-01-01", None), ("2022-05-01", None), ("2020-01-01", "2020-01-01 00:05")])
+    df = resolution_rows(
+        [("2020-01-01", None), ("2022-05-01", None), ("2020-01-01", "2020-01-01 00:05")]
+    )
     y, ready = labels(df, "regression")
     assert y[0] == RESOLUTION_CAP_HOURS and (y > 0).all()
-    assert in_queue(df).tolist() == [True, True, False]  # resolved before prediction time: never queued
+    assert in_queue(df).tolist() == [
+        True,
+        True,
+        False,
+    ]  # resolved before prediction time: never queued
     _, test = window_rows(df["created_at"], ready, in_queue(df), pd.Timestamp("2020-01-01"),
                           pd.Timestamp("2023-01-01"), SNAPSHOT)
     assert test.tolist() == [0]  # the 2022 ticket hadn't reached the cap by the snapshot
@@ -60,7 +82,9 @@ def test_forward_scores_ignore_later_tickets_and_unsettled_labels(history):
     df, X = history
     y, ready = labels(df, "regression")
     created = df["created_at"].to_numpy()
-    scores, scored = forward_text_scores("regression", X[TEXT_FEATURE], y, created, ready, blocks=3, min_rows=100)
+    scores, scored = forward_text_scores(
+        "regression", X[TEXT_FEATURE], y, created, ready, blocks=3, min_rows=100
+    )
     assert not scored[:500].any() and scored[500:].all()  # the first block is warm-up
 
     # Rewrite the last block, and the labels of earlier rows that hadn't settled when block 2 began.
@@ -83,7 +107,9 @@ def test_window_predictions_do_not_depend_on_the_future(history):
     train, test = window_rows(created, ready, in_queue(df), cutoff, end, SNAPSHOT)
 
     def run(labels_):
-        _, fitted, _ = evaluate_window("classification", X, labels_, created, ready, train, test, ["logistic_regression"])
+        _, fitted, _ = evaluate_window(
+            "classification", X, labels_, created, ready, train, test, ["logistic_regression"]
+        )
         return fitted["logistic_regression"].predict_proba(X.iloc[test])
 
     changed = y.copy()

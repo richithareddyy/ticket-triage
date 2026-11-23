@@ -66,8 +66,11 @@ class TextScorer(BaseEstimator, TransformerMixin):
             self.fit(X, y)
             return self.oof
         text = _text(X)
-        cv = (StratifiedKFold(self.folds, shuffle=True, random_state=SEED) if self.task == "classification"
-              else KFold(self.folds, shuffle=True, random_state=SEED))
+        cv = (
+            StratifiedKFold(self.folds, shuffle=True, random_state=SEED)
+            if self.task == "classification"
+            else KFold(self.folds, shuffle=True, random_state=SEED)
+        )
         method = "predict_proba" if self.task == "classification" else "predict"
         oof = cross_val_predict(clone(self._pipe()), text, y, cv=cv, method=method)
         self.fit(X, y)
@@ -75,7 +78,11 @@ class TextScorer(BaseEstimator, TransformerMixin):
 
     def transform(self, X):
         text = _text(X)
-        return self.pipe_.predict_proba(text) if self.task == "classification" else self.pipe_.predict(text)[:, None]
+        return (
+            self.pipe_.predict_proba(text)
+            if self.task == "classification"
+            else self.pipe_.predict(text)[:, None]
+        )
 
     def get_feature_names_out(self, input_features=None):
         if self.task == "classification":
@@ -83,7 +90,7 @@ class TextScorer(BaseEstimator, TransformerMixin):
         return np.array(["log_hours"])
 
     def term_contributions(self, text, output_index=0, k=5):
-        """Per-term tfidf * coef contributions to the text model's score; exact because the model is linear."""
+        """Per-term tfidf * coef contributions to the text score; exact as the model is linear."""
         vec, lin = self.pipe_.named_steps["tfidf"], self.pipe_.named_steps["linear"]
         row = vec.transform([text])
         coef = lin.coef_[output_index] if lin.coef_.ndim == 2 else lin.coef_
@@ -109,22 +116,44 @@ def preprocessor(task, labels=None, oof=None):
 def classifiers():
     return {
         "logistic_regression": LogisticRegression(max_iter=3000, class_weight="balanced"),
-        "random_forest": RandomForestClassifier(n_estimators=400, min_samples_leaf=3, max_features=0.4,
-                                                class_weight="balanced_subsample", n_jobs=-1,
-                                                random_state=SEED),
-        "xgboost": XGBClassifier(n_estimators=300, max_depth=4, learning_rate=0.05, subsample=0.9,
-                                 colsample_bytree=0.8, tree_method="hist", eval_metric="mlogloss",
-                                 n_jobs=-1, random_state=SEED),
+        "random_forest": RandomForestClassifier(
+            n_estimators=400,
+            min_samples_leaf=3,
+            max_features=0.4,
+            class_weight="balanced_subsample",
+            n_jobs=-1,
+            random_state=SEED,
+        ),
+        "xgboost": XGBClassifier(
+            n_estimators=300,
+            max_depth=4,
+            learning_rate=0.05,
+            subsample=0.9,
+            colsample_bytree=0.8,
+            tree_method="hist",
+            eval_metric="mlogloss",
+            n_jobs=-1,
+            random_state=SEED,
+        ),
     }
 
 
 def regressors():
     return {
         "ridge": Ridge(alpha=1.0),
-        "random_forest": RandomForestRegressor(n_estimators=400, min_samples_leaf=5, max_features=0.5,
-                                               n_jobs=-1, random_state=SEED),
-        "xgboost": XGBRegressor(n_estimators=500, max_depth=4, learning_rate=0.05, subsample=0.9,
-                                colsample_bytree=0.8, tree_method="hist", n_jobs=-1, random_state=SEED),
+        "random_forest": RandomForestRegressor(
+            n_estimators=400, min_samples_leaf=5, max_features=0.5, n_jobs=-1, random_state=SEED
+        ),
+        "xgboost": XGBRegressor(
+            n_estimators=500,
+            max_depth=4,
+            learning_rate=0.05,
+            subsample=0.9,
+            colsample_bytree=0.8,
+            tree_method="hist",
+            n_jobs=-1,
+            random_state=SEED,
+        ),
     }
 
 
@@ -137,7 +166,9 @@ def readable_names(prep):
     for raw in prep.get_feature_names_out():
         block, name = raw.split("__", 1)
         if block == "text":
-            names.append("text signal: " + (f"P({name[2:]})" if name.startswith("p_") else "est. log hours"))
+            names.append(
+                "text signal: " + (f"P({name[2:]})" if name.startswith("p_") else "est. log hours")
+            )
         elif block == "cat":
             col = next(c for c in CATEGORICAL_FEATURES if name.startswith(c + "_"))
             names.append(f"{col} = {name[len(col) + 1:]}")
@@ -187,7 +218,7 @@ class Explainer:
             yield col, X[col].to_numpy(), values[:, idx].sum(axis=1)
 
     def top_contributions(self, X, class_index=None, k=6):
-        """Top-k contributions per row by |SHAP|; `class_index` picks the explained class for classifiers."""
+        """Top-k contributions per row by |SHAP|; `class_index` picks the explained class."""
         values = self.shap_values(X)
         if values.ndim == 3:
             values = values[np.arange(len(values)), :, class_index]

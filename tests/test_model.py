@@ -14,9 +14,13 @@ def test_training_outputs_and_beats_baselines(artifacts):
         m = json.load(f)
     p, r = m["priority"], m["resolution_time"]
     assert p["selected_model"] in ("logistic_regression", "random_forest", "xgboost")
-    assert p["final_test"]["macro_f1"] > p["comparison"]["baseline_majority"]["test"]["macro_f1"] + 0.3
+    assert (
+        p["final_test"]["macro_f1"] > p["comparison"]["baseline_majority"]["test"]["macro_f1"] + 0.3
+    )
     assert r["final_test"]["mae_hours"] < r["comparison"]["baseline_median"]["test"]["mae_hours"]
-    assert (artifacts / "shap_priority.png").exists() and (artifacts / "shap_resolution.png").exists()
+    assert (artifacts / "shap_priority.png").exists() and (
+        artifacts / "shap_resolution.png"
+    ).exists()
 
 
 def test_prediction_shape(predictor):
@@ -29,10 +33,20 @@ def test_prediction_shape(predictor):
 
 
 def test_obvious_cases_are_ordered(predictor):
-    outage, request = predictor.predict([SAMPLE_TICKET, {
-        **SAMPLE_TICKET, "subject": "Would love dark mode", "customer_tier": "free", "channel": "web",
-        "description": "Please consider adding a dark mode. Thanks!", "category": "feature_request",
-        "prior_tickets_30d": 0}])
+    outage, request = predictor.predict(
+        [
+            SAMPLE_TICKET,
+            {
+                **SAMPLE_TICKET,
+                "subject": "Would love dark mode",
+                "customer_tier": "free",
+                "channel": "web",
+                "description": "Please consider adding a dark mode. Thanks!",
+                "category": "feature_request",
+                "prior_tickets_30d": 0,
+            },
+        ]
+    )
     order = predictor.classes
     assert order.index(outage["priority"]) > order.index(request["priority"])
     assert outage["resolution_hours"] < request["resolution_hours"]

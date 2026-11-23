@@ -23,13 +23,21 @@ class Predictor:
     @property
     def explainers(self):
         if self._explainers is None:
-            self._explainers = (Explainer(self.cls, self._background), Explainer(self.reg, self._background))
+            self._explainers = (
+                Explainer(self.cls, self._background),
+                Explainer(self.reg, self._background),
+            )
         return self._explainers
 
     def predict(self, tickets, explain=False, top_k=6):
         df = pd.DataFrame(tickets)
         now = pd.Timestamp.now(tz="UTC").tz_localize(None).isoformat()
-        defaults = {"created_at": now, "prior_tickets_30d": 0, "attachments": 0, "category": "unknown"}
+        defaults = {
+            "created_at": now,
+            "prior_tickets_30d": 0,
+            "attachments": 0,
+            "category": "unknown",
+        }
         for col, default in defaults.items():
             df[col] = df[col].fillna(default) if col in df else default
         X = build_features(df)
@@ -50,7 +58,9 @@ class Predictor:
             r = {
                 "priority": priority,
                 "confidence": round(float(proba[i, cls_idx[i]]), 4),
-                "priority_probabilities": {c: round(float(p), 4) for c, p in zip(self.classes, proba[i])},
+                "priority_probabilities": {
+                    c: round(float(p), 4) for c, p in zip(self.classes, proba[i])
+                },
                 "resolution_hours": round(float(hours[i]), 2),
                 "sla_target_hours": SLA_HOURS[priority],
                 "sla_breach_risk": bool(hours[i] > SLA_HOURS[priority]),
@@ -60,7 +70,9 @@ class Predictor:
                     "priority": pri_contrib[i],
                     "resolution_time": res_contrib[i],
                     # Words behind the "text signal" features, from the linear text models.
-                    "priority_key_terms": cls_exp.text_scorer.term_contributions(texts[i], int(cls_idx[i])),
+                    "priority_key_terms": cls_exp.text_scorer.term_contributions(
+                        texts[i], int(cls_idx[i])
+                    ),
                     "resolution_key_terms": reg_exp.text_scorer.term_contributions(texts[i]),
                 }
             results.append(r)

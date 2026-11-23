@@ -6,9 +6,17 @@ from triage.text import clean_text
 
 
 def make(**overrides):
-    row = dict(subject="Site DOWN", description="Error 500 everywhere!! Is this urgent? yes, URGENT.",
-               created_at="2026-09-26 22:30:00", channel="Email", product="API", customer_tier="pro",
-               category="outage", prior_tickets_30d=3, attachments=0)
+    row = dict(
+        subject="Site DOWN",
+        description="Error 500 everywhere!! Is this urgent? yes, URGENT.",
+        created_at="2026-09-26 22:30:00",
+        channel="Email",
+        product="API",
+        customer_tier="pro",
+        category="outage",
+        prior_tickets_30d=3,
+        attachments=0,
+    )
     row.update(overrides)
     return pd.DataFrame([row])
 

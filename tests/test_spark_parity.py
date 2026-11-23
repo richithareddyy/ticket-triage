@@ -40,7 +40,12 @@ def test_spark_matches_pandas(tmp_path):
              .config("spark.ui.enabled", "false").getOrCreate())
     try:
         sdf = spark.read.csv(str(path), header=True, multiLine=True, escape='"')
-        got = spark_build(sdf).toPandas().set_index("ticket_id").loc[raw["ticket_id"], FEATURE_COLUMNS]
+        got = (
+            spark_build(sdf)
+            .toPandas()
+            .set_index("ticket_id")
+            .loc[raw["ticket_id"], FEATURE_COLUMNS]
+        )
     finally:
         spark.stop()
     expected = build_features(pd.read_csv(path))
