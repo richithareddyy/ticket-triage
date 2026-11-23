@@ -10,7 +10,8 @@ from .conftest import SAMPLE_TICKET
 
 
 def test_training_outputs_and_beats_baselines(artifacts):
-    m = json.load(open(artifacts / "metrics.json"))
+    with open(artifacts / "metrics.json") as f:
+        m = json.load(f)
     p, r = m["priority"], m["resolution_time"]
     assert p["selected_model"] in ("logistic_regression", "random_forest", "xgboost")
     assert p["final_test"]["macro_f1"] > p["comparison"]["baseline_majority"]["test"]["macro_f1"] + 0.3
