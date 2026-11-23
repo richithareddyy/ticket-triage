@@ -1,6 +1,7 @@
 -r requirements.txt
 -r requirements-ui.txt
 pytest==8.4.2
+ruff==0.17.6
 pyarrow==21.0.0
 # PySpark needs a Java 17 runtime; use `make spark-docker` if Java isn't installed.
 pyspark==3.5.3

@@ -1,0 +1,9 @@
+[tool.ruff]
+required-version = "==0.17.6"
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM", "PLW", "RUF"]
+# zip(strict=) needs Python 3.10 and the project still supports 3.9.
+ignore = ["B905"]
