@@ -64,6 +64,18 @@ def test_inputs_are_rebuilt_as_filed():
     assert df["attachments"] == 2  # a1 and a2 were there when filed; a3 came later
 
 
+def test_component_removed_within_the_grace_period_does_not_count():
+    swap = [change("2020-01-01T10:05:00.000+0000", "Component", frm="core", frm_id="1"),
+            change("2020-01-01T10:05:00.000+0000", "Component", to="streams", to_id="2")]
+    df = bugs(
+        issue("A-1", components=[{"id": "2", "name": "streams"}], history=swap),
+        issue("A-2", components=[], history=swap[:1]),
+        issue("A-3", components=[], history=[change("2020-01-01T10:20:00.000+0000", "Component", frm="core", frm_id="1")]),
+    )
+    # A-3 lost its component after prediction time, so it still counts there.
+    assert df["category"].to_dict() == {"A-1": "streams", "A-2": "unknown", "A-3": "core"}
+
+
 def test_keeps_every_outcome_and_drops_unusable_records():
     df = bugs(
         issue("OK-1"),

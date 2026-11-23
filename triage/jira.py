@@ -162,12 +162,13 @@ def to_bugs(issues):
         if priority is None:
             continue
         components = {str(c["id"]): c["name"] for c in f.get("components") or []}
+        filed_ids = ids_at(components, changes, "Component", filed)
         for _, name, item in changes:  # names of components removed since filing
             if name == "Component":
                 for side in ("from", "to"):
                     if item.get(side):
                         components.setdefault(str(item[side]), item.get(side + "String") or "unknown")
-        filed_components = sorted(components[i] for i in ids_at(components, changes, "Component", filed))
+        filed_components = sorted(components[i] for i in filed_ids)
         attachments = ids_at([str(a["id"]) for a in f.get("attachment") or []], changes, "Attachment", filed)
         resolved = first_resolved(changes, f.get("resolutiondate"))
         rows.append(dict(
