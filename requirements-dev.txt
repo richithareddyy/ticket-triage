@@ -5,3 +5,5 @@ ruff==0.17.6
 pyarrow==21.0.0
 # PySpark needs a Java 17 runtime; use `make spark-docker` if Java isn't installed.
 pyspark==3.5.3
+# PySpark 3.5 still imports distutils, which Python 3.12 removed and setuptools provides.
+setuptools==80.9.0; python_version >= "3.12"
