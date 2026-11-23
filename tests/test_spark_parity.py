@@ -14,9 +14,10 @@ pyspark = pytest.importorskip("pyspark")
 def _java_available():
     # macOS ships a /usr/bin/java stub even without a JDK, so check that it actually runs.
     try:
-        return subprocess.run(["java", "-version"], capture_output=True, timeout=10).returncode == 0
-    except (OSError, subprocess.TimeoutExpired):
+        subprocess.run(["java", "-version"], capture_output=True, timeout=10, check=True)
+    except (OSError, subprocess.SubprocessError):  # missing, timed out or exited non-zero
         return False
+    return True
 
 
 if not _java_available():
