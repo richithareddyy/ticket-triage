@@ -18,7 +18,7 @@ The paper trail lists the main factors behind each prediction as SHAP contributi
 
 The hosted app may take up to a minute to wake if nobody has opened it recently.
 
-The first version represented text with 3,000 word features. Its SHAP explanations often pointed to missing words: “the word *would* isn’t in this ticket.” That wasn’t useful. Now a small text model turns the message into a few scores, which XGBoost combines with the other ticket details. During training, each score comes from a model that did not train on that ticket. This avoids leaking its answer into the features.
+The first version represented text with 3,000 word features. Its SHAP explanations often pointed to missing words: “the word *would* isn’t in this ticket.” That wasn’t useful. Now a small text model turns the message into a few scores, which XGBoost combines with the other ticket details. During training, each score comes from a model that did not train on that ticket. So a ticket's own label never trains the model that scores its text.
 
 ## Results and scope
 
@@ -35,7 +35,7 @@ These results describe the generated dataset, not performance on a real support 
 
 The results above are the easy case: the models are learning rules that were written into the data generator. To test the pipeline on real data, it runs on **96,086 bug reports** from the public Apache Jira tracker (Hive, Spark, Kafka, HBase, HDFS, YARN, Flink, Cassandra), of which 93,519 were still open 15 minutes after filing.
 
-The evaluation only uses what was known at the time:
+This is a forward-in-time evaluation with inputs rebuilt as filed:
 
 - **Inputs** are the summary, description, component and attachments as they stood 15 minutes after filing, rebuilt from each issue's changelog, plus project, filing time and the reporter's bug count over the previous 30 days.
 - **Priority** is the value 14 days after filing (5.4% changed in that time). **Resolution time** is hours to first resolution, capped at 90 days; a bug still open at the cap is labelled 90 days, never zero. Every outcome is kept: fixed, won't-fix, duplicate and never resolved (16.8%).

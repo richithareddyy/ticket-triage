@@ -122,7 +122,7 @@ To use real data, provide a CSV with the columns in `triage/features.py::RAW_COL
 
 ---
 
-The engineering question is how to turn ticket text into predictions that can be served and inspected. The out-of-fold text stage keeps label leakage out of the stacked training features, while grouped SHAP values make metadata contributions easier to read.
+The engineering question is how to turn ticket text into predictions that can be served and inspected. The out-of-fold text stage scores each training ticket with a model that did not train on it, while grouped SHAP values make metadata contributions easier to read.
 
 ## Quick start
 
