@@ -491,15 +491,13 @@ with tab_eval:
         if real:
             theme.section("Real-data check: Apache Jira")
             theme.html(
-                f'<div class="tt-muted">{real["rows"]:,} real Apache Jira bug reports, scored as '
-                'filed. Each '
-                f"year from {real['years']} is predicted by a model trained only on earlier, "
-                "settled outcomes; "
+                f'<div class="tt-muted">{real["test_rows"]:,} real Apache Jira bug reports filed '
+                f"in {real['years']}, with inputs rebuilt as filed where Jira's history allows. "
+                "Each year is predicted by a model trained only on earlier, settled outcomes; "
                 "figures are yearly averages against the strongest simple baseline. These are "
                 "open-source "
-                "bugs, not support tickets, and resolution time (capped at 90 days) is no better "
-                "than "
-                "a text-only model.</div>"
+                "bugs, not support tickets, and resolution MAE (times capped at 90 days) is no "
+                "better than a text-only model's.</div>"
                 + theme.stats(
                     [
                         (
@@ -552,11 +550,11 @@ real = evaluation.get("real_data") if evaluation else None
 jira = ""
 if real:
     jira = (
-        f"<p>On {real['rows']:,} real Apache Jira bug reports, each year predicted only from "
+        f"<p>On {real['test_rows']:,} real Apache Jira bug reports, each year predicted only from "
         "earlier ones, "
         f"priority macro-F1 falls to {real['priority']['macro_f1']:.2f} (best simple baseline "
-        f"{real['priority_baseline']['macro_f1']:.2f}), and resolution times are no better than a "
-        "text-only model. "
+        f"{real['priority_baseline']['macro_f1']:.2f}), and resolution MAE is no better than a "
+        "text-only model's. "
         "Those are open-source bugs, not support tickets.</p>"
     )
 theme.html(f"""<div class="tt-band"><h2>The honest numbers.<br>

@@ -77,10 +77,11 @@ def real_data_summary():
 
     priority, priority_baseline = summary("priority", True)
     resolution, resolution_baseline = summary("resolution_time", False)
-    windows = [w["window"][:4] for w in m["tasks"]["priority"]["windows"] if w["role"] == "test"]
+    tests = [w for w in m["tasks"]["priority"]["windows"] if w["role"] == "test"]
     return {
         "rows": m["population"]["open_at_prediction_time"],
-        "years": f"{windows[0]}-{windows[-1]}",
+        "test_rows": sum(w["test_rows"] for w in tests),
+        "years": f"{tests[0]['window'][:4]}-{tests[-1]['window'][:4]}",
         "priority": priority,
         "priority_baseline": priority_baseline,
         "resolution": resolution,

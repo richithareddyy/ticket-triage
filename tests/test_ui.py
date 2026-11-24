@@ -57,6 +57,7 @@ def test_model_tab_renders_metrics(app):
     assert "Synthetic test set" in text and "Models compared" in text and "Confusion matrix" in text
     assert "Priority macro-F1" in text
     assert "real Apache Jira bug reports" in text and "0.333" in text
+    assert "25,856 real Apache Jira bug reports" in text and "93,519" not in text
 
 
 def test_new_sample_keeps_last_result_faded(app):
