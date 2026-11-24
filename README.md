@@ -33,7 +33,7 @@ This is a forward-in-time evaluation with inputs rebuilt as filed, apart from th
 - **Priority** is the value 14 days after filing (5.4% changed in that time). **Resolution time** is hours to first resolution, capped at 90 days (for 23 bugs with no resolution in the changelog, the current resolution date is used); a bug still open at the cap is labelled 90 days, never zero. Every outcome is kept: fixed, won't-fix, duplicate and never resolved (16.8%).
 - **Each year from 2019 to 2025 is predicted by models trained on bugs whose outcomes had settled before that year began.** A bug filed in late November only counts as settled for resolution time in late February, even if it closed the next day, so it misses the next January's models.
 - **Text scores inside the stacked model are also forward-only.** Training rows are cut into five chronological blocks, and each block is scored by a text model fit only on outcomes settled before it. The first block trains the text model but is left out of the final model.
-- **2019 picks the model family** (Random Forest for priority, XGBoost for resolution time); 2020–2025 test it unchanged.
+- **2019 picks the model family** (Random Forest for priority, XGBoost for resolution time); 2020–2025 test it unchanged. In 2019 itself, the text-only baseline had a higher priority macro-F1 than the chosen Random Forest (0.3215 against 0.3098).
 
 For the last year's models, on 300 sampled 2025 bugs, the input with the largest mean absolute SHAP value is the project for both tasks and the second is a text score; grouped SHAP values sum to the model output to within 1e-5. The pandas feature code is the same as for the synthetic tickets. The Spark/pandas parity test checks that code on synthetic tickets only.
 
