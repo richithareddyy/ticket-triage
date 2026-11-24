@@ -8,6 +8,7 @@ so validation and responses are identical to the HTTP API. This is how the free
 single-process demo runs.
 """
 import datetime as dt
+import glob
 import math
 import os
 import random
@@ -97,8 +98,18 @@ class ApiError(Exception):
     pass
 
 
-@st.cache_resource
-def local_client():
+def source_version():
+    """Newest change to the in-process API's code. A hosted update keeps the process running."""
+    root = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
+    files = [f for d in ("api", "triage") for f in glob.glob(os.path.join(root, d, "*.py"))]
+    return max((os.path.getmtime(f) for f in files), default=0)  # the UI image has no API code
+
+
+@st.cache_resource(max_entries=1)
+def local_client(version):
+    # Streamlit only watches the demo folder, so drop modules loaded before an update.
+    for name in [m for m in sys.modules if m.split(".")[0] in ("api", "triage")]:
+        del sys.modules[name]
     from api.app import create_app
     return create_app().test_client()
 
@@ -106,7 +117,8 @@ def local_client():
 def call(method, path, params=None, json=None):
     """(status, body) from the remote API, or from the in-process app when API_URL is unset."""
     if not API_URL:
-        resp = local_client().open(path, method=method, query_string=params, json=json)
+        client = local_client(source_version())
+        resp = client.open(path, method=method, query_string=params, json=json)
         return resp.status_code, resp.get_json()
     try:
         r = requests.request(method, f"{API_URL}{path}", params=params, json=json, timeout=30)
@@ -116,7 +128,7 @@ def call(method, path, params=None, json=None):
 
 
 @st.cache_data(ttl=60)
-def get(path):
+def get(path, version):
     status, body = call("GET", path)
     if status != 200:
         raise ApiError(body.get("error", f"HTTP {status}") if body else f"HTTP {status}")
@@ -234,13 +246,13 @@ def comparison_table(block, columns, fmt):
 theme.html(theme.hero())
 
 try:
-    health = get("/health")
+    health = get("/health", source_version())
 except ApiError as e:
     st.error(f"Can't reach the prediction API at `{API_URL}`. {e}")
     st.stop()
 
 try:
-    evaluation = get("/model")
+    evaluation = get("/model", source_version())
 except ApiError:
     evaluation = None
 
