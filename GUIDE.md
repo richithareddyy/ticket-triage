@@ -14,7 +14,7 @@ Predict support-ticket priority and resolution time from ticket text and metadat
 - Compares linear models, Random Forest, and XGBoost.
 - Includes local, Docker, and AWS deployment workflows.
 
-**Data scope:** Training and evaluation use synthetic support tickets. The reported results describe this generated dataset and are not evidence of performance on a real support queue.
+**Data scope:** The served models and the results in this guide use synthetic support tickets. They describe this generated dataset and are not evidence of performance on a real support queue. A separate evaluation on real Apache Jira bug reports is in the [README](README.md#main-result-real-data-check).
 
 ## Results
 
@@ -126,7 +126,7 @@ The engineering question is how to turn ticket text into predictions that can be
 
 ## Quick start
 
-Requires Python 3.9+ and Docker. On macOS, XGBoost also needs `brew install libomp`.
+Requires Python 3.9–3.12 and Docker. On macOS, XGBoost also needs `brew install libomp`.
 
 ```bash
 make setup          # venv + dependencies
@@ -268,6 +268,8 @@ triage/
   model.py            stacked pipelines, LR/RF/XGBoost, SHAP explainer
   train.py            train, compare, select, evaluate; writes artifacts
   predict.py          inference + explanations + SLA flag
+  jira.py             downloads Apache Jira bugs and rebuilds their inputs as filed
+  temporal.py         rolling forward-in-time evaluation on those bugs
 api/                  Flask app + gunicorn entry point
 ui/                   Streamlit app
 tests/                pytest suite
